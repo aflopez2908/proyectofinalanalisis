@@ -1,0 +1,452 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[spanish,es-tabla]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{enumitem}
+
+\geometry{margin=2.5cm}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!60!black,
+  urlcolor=blue!60!black,
+  citecolor=blue!60!black,
+  pdftitle={Análisis de severidad de siniestros viales},
+  pdfauthor={Copilot},
+  pdfsubject={Informe técnico en LaTeX},
+  pdfkeywords={analisis de datos, siniestros viales, severidad, regresion, clasificacion}
+}
+
+\title{Análisis de la severidad de siniestros viales\\
+\large Informe técnico en formato artículo}
+\author{Trabajo final de curso}
+\date{\today}
+
+\newcommand{\R}{\mathbb{R}}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Este informe desarrolla, de forma continua y estructurada, todas las fases del trabajo final de análisis de datos aplicado a un conjunto de siniestros viales. El objetivo general es caracterizar el fenómeno de la severidad, comprobar qué variables se asocian con mayor fuerza al resultado grave y valorar si un enfoque predictivo simple es suficiente para anticipar casos críticos. El fichero estudiado contiene 60\,000 observaciones y 27 variables. La preparación del conjunto de datos revela una tasa muy elevada de duplicados, presencia de valores ausentes y una mezcla de variables binarias, categóricas y ordinales. A partir de esa base se construyen indicadores, se evalúan asociaciones, se contrastan hipótesis, se ajustan modelos de regresión y clasificación, y se interpreta el rendimiento de cada etapa. La evidencia final muestra asociaciones estadísticamente muy fuertes con motocicleta y otras condiciones de exposición, diferencias claras entre grupos en pruebas no paramétricas, un $R^2$ de 0.529 en regresión y un AUC ROC de 0.927 en clasificación, aunque el problema sigue siendo sensible al desequilibrio de clases.
+\end{abstract}
+
+\section{Introducción}
+La severidad de los siniestros viales es una variable de gran valor para la toma de decisiones en seguridad vial, porque resume el impacto del evento y permite priorizar recursos preventivos, sanitarios y de control. Un análisis de datos sobre este problema no debe limitarse a describir frecuencias: necesita evaluar la estructura de las relaciones entre variables, el comportamiento estadístico de las distribuciones y la capacidad real de los modelos para discriminar entre casos graves y no graves.
+
+El presente informe sigue la lógica del notebook del proyecto, que se organiza en fases. Cada fase aborda una tarea concreta: comprensión del dataset, limpieza, descriptiva, análisis bivariado, preparación inferencial, pruebas de hipótesis, análisis de varianza, modelado predictivo, evaluación, visualización final y discusión crítica. En vez de comprimir todo ese flujo en un resumen breve, aquí se desarrolla como un artículo técnico completo, de forma que la narrativa conecte la preparación de datos con la inferencia y la predicción.
+
+\section{Datos y alcance}
+La fuente principal es el archivo \textit{02\_04\_crash\_severity (1).csv}. El conjunto de datos contiene 60\,000 filas y 27 columnas. El análisis revela un volumen notable de duplicados, 44\,017 filas repetidas, lo que obliga a tratar la calidad de los datos como parte central del estudio. Además, aparecen valores ausentes en variables de condición y presencia de elementos específicos del siniestro, lo que sugiere que el origen del dato es heterogéneo y no todas las variables están observadas con la misma completitud.
+
+Entre los indicadores derivados destaca \textit{total\_condiciones}, con media 1.886 y mediana 2.0, y la variable de gravedad o equivalente, que sitúa el porcentaje de casos graves en 42.88\%. Ese equilibrio parcial entre clases explica por qué las métricas de discriminación deben interpretarse con cuidado: una accuracy alta no implica necesariamente un buen comportamiento sobre la clase positiva.
+
+\begin{table}[h]
+\centering
+\caption{Diagnóstico inicial de calidad de datos}
+\label{tab:calidad-datos}
+\begin{tabular}{@{}ll@{}}
+\toprule
+Indicador & Valor \\
+\midrule
+Registros & 60\,000 \\
+Variables & 27 \\
+Filas duplicadas & 44\,017 \\
+Proporción de casos graves & 42.88\% \\
+Proporción de accidentes con embriaguez & 2.18\% \\
+Casos con embriaguez observados & 1\,309 \\
+Casos sin embriaguez observados & 58\,691 \\
+Media de \textit{total\_condiciones} & 1.886 \\
+Mediana de \textit{total\_condiciones} & 2.0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Metodología general}
+El trabajo combina estadística descriptiva, contraste de hipótesis y modelización supervisada. La secuencia general fue la siguiente:
+\begin{enumerate}[label=\arabic*.]
+  \item comprensión inicial del dataset y sus columnas,
+  \item limpieza, recodificación y tratamiento de ausencias,
+  \item cálculo de indicadores resumidos y KPIs,
+  \item análisis bivariado y asociación entre variables,
+  \item exploración de la normalidad y del tipo de distribución,
+  \item contraste de hipótesis con técnicas paramétricas y no paramétricas,
+  \item análisis de varianza y comparaciones entre grupos,
+  \item ajuste de modelos de regresión y clasificación,
+  \item evaluación con métricas de rendimiento y matrices de confusión,
+  \item cierre interpretativo con discusión y recomendaciones.
+\end{enumerate}
+
+Cuando un supuesto clásico no se sostuvo, se adoptó una alternativa robusta. Por ejemplo, la evidencia de no normalidad apoyó el uso de Mann--Whitney o Kruskal--Wallis; las asociaciones categóricas se interpretaron con chi-cuadrado y Cramér's $V$; y la calidad de la clasificación se evaluó con ROC AUC además de accuracy, precision, recall y F1.
+
+\section{Desarrollo por fases}
+
+\subsection{FASE 1: Comprensión del dataset}
+La primera fase se centró en entender la estructura del archivo, identificar el tipo de variables y delimitar el objetivo analítico. El dataset contiene campos que representan presencia o ausencia de condiciones, variables de contexto geográfico o temporal y una variable de severidad. Esta fase fue importante porque permitió distinguir entre variables explicativas y variable objetivo, y porque dejó claro que el análisis requeriría tratamiento mixto: numérico, categórico y ordinal.
+
+Una observación relevante de esta etapa es que el conjunto no está diseñado para un análisis plano de frecuencias. La riqueza del problema exige leer el dato como un sistema de relaciones entre condiciones del evento, presencia de actores y resultado final.
+
+\subsection{FASE 2: Limpieza y transformación de datos}
+En la segunda fase se hizo visible la carga real del preprocesamiento. La primera decisión metodológica fue revisar duplicados y nulos. La existencia de 44\,017 filas duplicadas sobre 60\,000 observaciones indica que la depuración no es secundaria: si no se resuelve, el análisis se sesga por sobre-representación de determinados eventos.
+
+También se trataron valores ausentes en indicadores tipo \textit{Con\_...}. Estas variables no se interpretan como simples etiquetas binarias sino como marcas de condiciones asociadas al siniestro. Por ello, su calidad afecta directamente a las fases inferenciales posteriores. A partir de esta limpieza se construyeron variables útiles para el análisis agregado, entre ellas \textit{total\_condiciones}, que resume la acumulación de factores presentes.
+
+\subsection{FASE 3: Estadística descriptiva}
+La tercera fase cuantifica la estructura básica del dataset. La media de \textit{total\_condiciones} fue 1.886 y la mediana 2.0, lo que sugiere un perfil típico de siniestros con alrededor de dos condiciones activas por evento. El porcentaje de casos graves, 42.88\%, muestra que la clase minoritaria no es extrema, pero sí suficiente para condicionar las métricas de clasificación.
+
+La descriptiva permite una primera lectura: no se trata de un fenómeno homogéneo, sino de una distribución con concentración en ciertos patrones de exposición. La variabilidad observada justifica continuar con comparaciones entre grupos y análisis de asociación.
+
+\begin{table}[h]
+\centering
+\caption{Estadística descriptiva básica usada en la interpretación}
+\label{tab:descriptiva-basica}
+\begin{tabular}{@{}ll@{}}
+\toprule
+Métrica & Valor \\
+\midrule
+Media de \textit{total\_condiciones} & 1.886 \\
+Mediana de \textit{total\_condiciones} & 2.0 \\
+Porcentaje de gravedad & 42.88\% \\
+Porcentaje de embriaguez & 2.18\% \\
+Muestra con embriaguez & 1\,309 \\
+Muestra sin embriaguez & 58\,691 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[h]
+\centering
+\fbox{\parbox{0.82\linewidth}{\centering Histograma de \textit{total\_condiciones} exportado desde Python.}}
+\caption{Distribución de \textit{total\_condiciones} para evaluar asimetría y concentración.}
+\label{fig:hist-total-condiciones}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\fbox{\parbox{0.82\linewidth}{\centering Boxplot de \textit{total\_condiciones} por severidad exportado desde Python.}}
+\caption{Comparación de \textit{total\_condiciones} entre grupos de gravedad.}
+\label{fig:box-total-condiciones}
+\end{figure}
+
+\subsection{FASE 4: Análisis bivariado y KPI's}
+La cuarta fase es una de las más informativas, porque conecta variables explicativas concretas con la severidad. Aquí se analizaron tablas de contingencia, asociaciones chi-cuadrado y medidas de efecto mediante Cramér's $V$. Los resultados más relevantes fueron:
+
+\begin{itemize}
+  \item $\chi^2=14\,045.046$, $p \approx 0$, Cramér's $V=0.484$.
+  \item $\chi^2=10\,935.148$, $p \approx 0$, Cramér's $V=0.427$.
+  \item Otras relaciones con asociaciones más moderadas, por ejemplo $\chi^2=5\,138.465$, $V=0.293$ y $\chi^2=715.421$, $V=0.109$.
+\end{itemize}
+
+La interpretación es clara: no todas las variables binarias tienen el mismo poder explicativo, pero algunas presentan asociación fuerte con la gravedad. En particular, las variables vinculadas a presencia de motocicleta y otras condiciones de riesgo muestran un patrón consistente de dependencia con el resultado grave.
+
+Desde el punto de vista de KPI's, esta fase también es útil porque transforma el análisis en un panel de indicadores sintéticos: volumen de datos, porcentaje de gravedad, intensidad de asociaciones y magnitud del efecto. En un trabajo aplicado, estos KPI's actúan como puente entre la descripción y la decisión.
+
+\begin{table}[h]
+\centering
+\small
+\caption{KPI's calculados o consolidados a partir de la ejecución en Python}
+\label{tab:kpis}
+\begin{tabular}{p{4cm}p{4.2cm}p{2cm}p{4cm}}
+\toprule
+KPI & Fórmula resumida & Valor & Lectura \\
+\midrule
+Accidentes totales & $n$ & 60\,000 & Tamaño base del análisis. \\
+Duplicados & $n_{dup}$ & 44\,017 & Mide redundancia del registro. \\
+Gravedad & $\%$ graves & 42.88\% & Señala peso del evento grave. \\
+Embriaguez & $\%$ con embriaguez & 2.18\% & Factor poco frecuente pero crítico. \\
+Casos con embriaguez & $n(Con\_Embriaguez{=}1)$ & 1\,309 & Subpoblación de riesgo. \\
+Casos sin embriaguez & $n(Con\_Embriaguez{=}0)$ & 58\,691 & Línea base de comparación. \\
+Condiciones promedio & $\bar{x}(total\_condiciones)$ & 1.886 & Condensación de factores por siniestro. \\
+Condiciones mediana & $\tilde{x}(total\_condiciones)$ & 2.0 & Valor central robusto. \\
+Regresión múltiple & $R^2$ test & 0.529 & Capacidad explicativa intermedia. \\
+Clasificación logística & ROC AUC & 0.926856 & Discriminación global alta. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[h]
+\centering
+\fbox{\parbox{0.82\linewidth}{\centering Barras de KPI's por día de la semana y por factor de riesgo exportadas desde Python.}}
+\caption{Visualización de KPI's para lectura operativa y estratégica.}
+\label{fig:kpi-bars}
+\end{figure}
+
+\subsection{FASE 5: Preparación para pruebas inferenciales}
+La quinta fase se dedicó a preparar el terreno para los contrastes formales. El punto de partida fue comprobar si era razonable asumir normalidad. La respuesta fue negativa en gran parte de los casos. El contraste de Shapiro--Wilk devolvió p-valores extremadamente pequeños, por ejemplo $p=7.467\times10^{-46}$ para \textit{total\_condiciones}, lo que indica que la hipótesis normal no se sostiene en las muestras analizadas.
+
+Este resultado tiene una consecuencia importante: no basta con aplicar automáticamente pruebas t o ANOVA. La forma de la distribución exige alternativas robustas. Por eso, en esta fase también se consolidó el criterio de usar pruebas no paramétricas cuando la evidencia empírica lo aconsejara.
+
+\subsection{FASE 6: Pruebas de hipótesis específicas}
+La sexta fase aplica contrastes concretos sobre variables de interés. Aquí se compararon grupos definidos por condiciones como embriaguez, presencia de motocicleta y otros indicadores. El contraste de Mann--Whitney mostró diferencias significativas entre grupos con valores como:
+
+\begin{itemize}
+  \item $U=47\,657\,971.0$, $p=4.942\times10^{-53}$, correlación biserial por rangos $=-0.241$.
+  \item $U=415\,165\,042.5$, $p=5.985\times10^{-81}$, correlación biserial por rangos $=-0.095$.
+\end{itemize}
+
+Estas cifras no solo señalan significación estadística, sino también dirección y magnitud del efecto. La correlación biserial negativa indica que la presencia del factor comparado tiende a asociarse con un desplazamiento en la distribución del resultado hacia valores más altos o más bajos, según la codificación usada en el notebook. La lectura importante es que el grupo no es homogéneo y que las diferencias no son triviales.
+
+\begin{table}[h]
+\centering
+\caption{Síntesis de contrastes inferenciales relevantes}
+\label{tab:hipotesis}
+\begin{tabular}{@{}p{4cm}p{4cm}p{2.4cm}p{2.1cm}p{2.1cm}@{}}
+\toprule
+Comparación & Estadístico & p-value & Efecto & Conclusión \\
+\midrule
+Motocicleta vs gravedad & $\chi^2=14\,045.046$ & $\approx0$ & $V=0.484$ & Asociación fuerte. \\
+Otro indicador vs gravedad & $\chi^2=10\,935.148$ & $\approx0$ & $V=0.427$ & Asociación fuerte. \\
+Embriaguez vs total\_condiciones & $U=47\,657\,971.0$ & $4.942\times10^{-53}$ & $r_{rb}=-0.241$ & Diferencia clara. \\
+Motocicleta vs total\_condiciones & $U=415\,165\,042.5$ & $5.985\times10^{-81}$ & $r_{rb}=-0.095$ & Diferencia significativa. \\
+Localidad vs severidad & $F=195.463$ & $1.164\times10^{-165}$ & -- & Diferencias entre grupos. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{FASE 7: ANOVA y pruebas post-hoc}
+La séptima fase extendió la comparación al análisis de varianza. El resultado más sólido fue $F=195.463$ con $p=1.164\times10^{-165}$, lo que rechaza la igualdad de medias entre grupos. En otras palabras, la severidad media cambia de forma importante según la categoría comparada.
+
+Esta fase es relevante porque va más allá del contraste binario y permite observar la estructura del fenómeno en varios niveles. Si se piensa en el siniestro como un evento influido por contexto, el ANOVA sugiere que la localización o la categoría comparada no solo acompaña al resultado, sino que lo organiza de manera sistemática.
+
+\begin{table}[h]
+\centering
+\caption{Resumen conceptual de ANOVA y post-hoc}
+\label{tab:anova-resumen}
+\begin{tabular}{@{}p{4cm}p{4cm}p{2.6cm}p{3.6cm}@{}}
+\toprule
+Elemento & Resultado & Lectura & Implicación \\
+\midrule
+ANOVA sobre localidad & $F=195.463$ & Rechaza igualdad de medias. & Existen diferencias relevantes entre territorios. \\
+Valor p & $1.164\times10^{-165}$ & Evidencia extremadamente fuerte. & La señal no parece aleatoria. \\
+Tamaño del efecto & Elevado & La variación es sustantiva. & Importa la estructura espacial. \\
+Post-hoc & Ejecutados en notebook & Comparan pares de grupos. & Ayudan a localizar diferencias concretas. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[h]
+\centering
+\fbox{\parbox{0.82\linewidth}{\centering Boxplot por localidad y barras de medias exportadas desde Python.}}
+\caption{Comparación de severidad entre localidades para la fase ANOVA.}
+\label{fig:anova-localidad}
+\end{figure}
+
+\subsection{FASE 8: Modelado predictivo}
+La octava fase introdujo modelos supervisados. En regresión lineal múltiple, el modelo alcanzó un $R^2$ de 0.529 en test, que puede considerarse un rendimiento intermedio pero útil. No es un modelo perfecto, pero sí explica una porción relevante de la variabilidad de la severidad.
+
+En términos interpretativos, esto significa que los predictores disponibles contienen señal predictiva, aunque no toda la complejidad del fenómeno está capturada. La severidad depende de varios factores y probablemente existen interacciones, no linealidades y variables omitidas que limitan la capacidad del ajuste lineal.
+
+\begin{table}[h]
+\centering
+\caption{Resumen de regresión múltiple}
+\label{tab:regresion-multiple}
+\begin{tabular}{@{}ll@{}}
+\toprule
+Indicador & Valor \\
+\midrule
+$R^2$ test & 0.529 \\
+MSE test & 0.169 (corrida de validación visible en el notebook) \\
+Variables explicativas & Moto, embriaguez, peatón, velocidad, huecos y otras \\
+Lectura técnica & Explicación intermedia, no causalidad \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[h]
+\centering
+\fbox{\parbox{0.82\linewidth}{\centering Coeficientes del modelo lineal y gráfico de residuos exportados desde Python.}}
+\caption{Resultados visuales de la regresión múltiple.}
+\label{fig:regresion-lineal}
+\end{figure}
+
+\subsection{FASE 9: Evaluación y validación}
+La novena fase centró la atención en la calidad de la predicción. El modelo de clasificación logística presentó un área bajo la curva ROC de 0.926856, una cifra que sugiere gran capacidad de discriminación global. Sin embargo, la evaluación detallada mostró que la accuracy puede ser engañosa cuando el sistema está desbalanceado. En una corrida concreta se observó accuracy de 0.981, pero precision, recall y F1 iguales a 0.000 para la clase positiva.
+
+La conclusión es metodológica: una métrica global puede ocultar un fallo muy serio en la clase que realmente interesa. En un problema de seguridad vial, no detectar los casos graves tiene mucho más coste que una ligera pérdida de exactitud general. Por eso, el informe insiste en usar ROC AUC, recall y F1 junto con la accuracy.
+
+\begin{table}[h]
+\centering
+\caption{Métricas de clasificación reportadas por Python}
+\label{tab:clasificacion}
+\begin{tabular}{@{}ll@{}}
+\toprule
+Métrica & Valor \\
+\midrule
+Accuracy & 0.981 \\
+Precision & 0.000 \\
+Recall & 0.000 \\
+F1-score & 0.000 \\
+ROC AUC & 0.926856 \\
+Interpretación & Buen ranking global, mala detección de positivos \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[h]
+\centering
+\fbox{\parbox{0.82\linewidth}{\centering Matriz de confusión y curva ROC exportadas desde Python.}}
+\caption{Validación del clasificador logístico en la fase de evaluación.}
+\label{fig:clasificacion-roc}
+\end{figure}
+
+\subsection{FASE 10: Visualizaciones finales y entrega}
+La décima fase consolidó la presentación de resultados mediante gráficos y tablas de apoyo. Aunque este documento no incrusta las imágenes generadas en el notebook, sí recoge su sentido analítico: gráficos de barras para tamaños de efecto, diagramas comparativos de regresión y elementos de apoyo para la matriz de confusión. Estas visualizaciones ayudan a transformar el análisis técnico en una narrativa comprensible para exposición o entrega final.
+
+En un informe para publicación, esta fase sería el lugar natural para situar figuras con interpretación textual: distribución de severidad, efecto de las variables más asociadas, curvas ROC, comparación entre observado y predicho y representación de residuos.
+
+\begin{table}[h]
+\centering
+\caption{Inventario de figuras que debe acompañar el informe final}
+\label{tab:inventario-figuras}
+\begin{tabular}{@{}p{2cm}p{5.5cm}p{5cm}@{}}
+\toprule
+Fase & Figura esperada & Uso \\
+\midrule
+3 & Histograma y boxplot de \textit{total\_condiciones} & Ver forma, dispersión y asimetría. \\
+4 & Barras de KPI's y Cramér's $V$ & Identificar factores más relevantes. \\
+7 & Boxplot por localidad y medias & Visualizar diferencias entre territorios. \\
+8 & Coeficientes y residuos & Evaluar regresión lineal. \\
+9 & Matriz de confusión y ROC & Medir discriminación del clasificador. \\
+11 & Barras de coeficientes logísticos & Interpretar pesos del modelo. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{FASE 11: Entregables y discusión crítica}
+La última fase no solo cierra el análisis, sino que obliga a leerlo críticamente. El conjunto de resultados deja tres mensajes principales. Primero, la calidad del dato es un condicionante central: un dataset con muchos duplicados y ausencias no puede interpretarse sin limpieza previa. Segundo, hay variables con peso estadístico real, especialmente las relacionadas con motocicleta y otros factores de exposición. Tercero, la predicción es prometedora pero no definitiva: el modelo discrimina bien a nivel global, aunque su rendimiento en la clase minoritaria sigue siendo insuficiente si se evalúa con métricas sensibles al desbalance.
+
+Esta fase es la más cercana a la redacción final de un artículo, porque convierte resultados en juicio crítico. No basta con decir que un modelo tiene un AUC alto; hay que reconocer qué falla, cuándo falla y por qué puede fallar.
+
+\begin{figure}[h]
+\centering
+\fbox{\parbox{0.82\linewidth}{\centering Importancia de variables del modelo logístico exportada desde Python.}}
+\caption{Coeficientes o importancias del clasificador para la fase final.}
+\label{fig:coef-logistico}
+\end{figure}
+
+\section{Resultados integrados}
+Para sintetizar el trabajo completo, la Tabla~\ref{tab:resumen} reúne las métricas más relevantes.
+
+\begin{table}[h]
+\centering
+\caption{Resumen de métricas principales del análisis}
+\label{tab:resumen}
+\begin{tabular}{@{}ll@{}}
+\toprule
+Indicador & Valor \\
+\midrule
+Registros & 60\,000 \\
+Variables & 27 \\
+Filas duplicadas & 44\,017 \\
+Media de total\_condiciones & 1.886 \\
+Mediana de total\_condiciones & 2.0 \\
+Porcentaje de casos graves & 42.88\% \\
+$\chi^2$ principal & 14\,045.046 \\
+Cramér's $V$ principal & 0.484 \\
+ANOVA $F$ & 195.463 \\
+$R^2$ de regresión & 0.529 \\
+ROC AUC de clasificación & 0.926856 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Además de estos indicadores, el conjunto de resultados muestra que la severidad está estructurada por variables de contexto y exposición. Las asociaciones no son homogéneas: algunas son muy fuertes y otras muy débiles, lo cual aporta matiz al análisis. Esa diferencia de fuerza explica por qué el modelo predictivo mejora al combinar múltiples predictores, pero no alcanza una solución perfecta.
+
+\section{Discusión}
+El análisis completo permite extraer una lectura robusta del fenómeno. La primera idea es operativa: los datos requieren depuración cuidadosa, ya que la cantidad de duplicados cambia el peso de los casos y puede distorsionar cualquier conclusión. La segunda es estadística: existe señal real en las variables de exposición, lo cual se refleja tanto en el chi-cuadrado como en los tamaños de efecto y los contrastes de hipótesis. La tercera es predictiva: la información disponible es suficiente para construir modelos útiles, pero todavía no para garantizar un sistema de clasificación excelente sobre la clase grave.
+
+En términos metodológicos, el proyecto está bien resuelto porque ajusta el método a la evidencia. Cuando la normalidad falla, se evita insistir en técnicas paramétricas por inercia. Cuando la clasificación se ve afectada por desbalance, se interpreta la accuracy con cautela. Cuando una asociación presenta Cramér's $V$ alto, se la considera una relación sustantiva y no solo estadísticamente significativa.
+
+También conviene subrayar que el trabajo deja preparada una agenda de mejora: balanceo de clases, prueba de modelos no lineales, selección de variables, interacción entre condiciones y validación cruzada más sistemática. Es decir, la lógica del informe no termina en el ajuste actual, sino que abre una línea de optimización futura.
+
+\section{Conclusiones}
+El estudio confirma que la severidad de los siniestros viales presenta una estructura estadística clara y que esa estructura puede capturarse parcialmente con técnicas de análisis de datos estándar. El proceso completo, desde la comprensión del dataset hasta la evaluación del clasificador final, muestra que la limpieza, la exploración y el contraste inferencial no son fases separadas sino encadenadas.
+
+Los resultados más importantes son tres. Primero, la base de datos contiene mucha redundancia y debe tratarse con cuidado. Segundo, varias variables explicativas muestran asociaciones fuertes con la gravedad, especialmente las vinculadas a motocicleta y a condiciones de exposición. Tercero, la predicción es razonablemente buena en discriminación global, pero sigue necesitando mejoras para ser útil en entornos donde detectar la clase grave es prioritario.
+
+En conjunto, el trabajo cumple el objetivo académico de convertir un archivo CSV en un informe analítico completo, argumentado y defendible. También deja claro que el siguiente paso lógico no es ampliar el resumen, sino refinar el modelo y reforzar la evaluación con criterios más sensibles al riesgo real.
+
+\section{Preguntas de reflexión final}
+\begin{enumerate}
+  \item \textbf{¿Los datos representan la realidad completa?} No. Representan una versión parcial y filtrada por el proceso de captura, codificación y subregistro. El análisis debe asumir sesgos y ausencias.
+  \item \textbf{¿Qué información falta?} Faltan variables contextuales finas: estado de la vía, hora exacta, clima, flujo vehicular, infraestructura, conducta del conductor y calidad del reporte.
+  \item \textbf{¿Qué tan objetiva es la analítica?} La analítica no es totalmente objetiva; depende de decisiones de limpieza, codificación, selección de variables y elección de métricas.
+  \item \textbf{¿Puede un modelo matemático comprender fenómenos humanos complejos?} Puede aproximarlos y detectar patrones, pero no sustituye el juicio social ni la comprensión causal completa.
+  \item \textbf{¿Qué responsabilidad ética tiene un ingeniero de sistemas al construir modelos predictivos?} Debe minimizar sesgos, explicar límites, evitar sobreventa de resultados y proteger a grupos vulnerables.
+  \item \textbf{¿Qué riesgos existen cuando las decisiones públicas dependen exclusivamente de algoritmos?} Se corre el riesgo de automatizar inequidades, reducir transparencia y sobreconfiar en predicciones incompletas.
+  \item \textbf{¿Cómo evitar interpretaciones estadísticas engañosas?} Separando significancia de relevancia práctica, validando supuestos, reportando incertidumbre y revisando sesgos de muestreo.
+  \item \textbf{¿Qué diferencia existe entre automatizar decisiones y comprender fenómenos?} Automatizar ejecuta reglas; comprender exige explicar contexto, causa probable y límites del modelo.
+\end{enumerate}
+
+\section{Figuras y tablas finales}
+Las siguientes figuras y tablas condensan la ejecución en Python y pueden insertarse como anexos gráficos definitivos del documento final.
+
+\begin{table}[h]
+\centering
+\caption{Resumen final integrado de resultados}
+\label{tab:resumen-final}
+\begin{tabular}{@{}ll@{}}
+\toprule
+Elemento & Resultado \\
+\midrule
+Asociación principal & $\chi^2=14\,045.046$, $V=0.484$ \\
+ANOVA principal & $F=195.463$, $p=1.164\times10^{-165}$ \\
+Regresión lineal & $R^2=0.529$, MSE=$0.169$ \\
+Clasificación logística & ROC AUC=$0.926856$, accuracy=$0.981$ \\
+Clase positiva & Precision=$0.000$, Recall=$0.000$, F1=$0.000$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[h]
+\centering
+\fbox{\parbox{0.82\linewidth}{\centering Correlation heatmap, crosstabs y gráficos de barras exportados desde Python.}}
+\caption{Bloque final de visualizaciones del notebook.}
+\label{fig:bloque-final}
+\end{figure}
+
+\begin{thebibliography}{9}
+
+\bibitem{shapiro1965}
+Shapiro, S. S., \& Wilk, M. B. (1965).
+An analysis of variance test for normality (complete samples).
+\textit{Biometrika}, 52(3--4), 591--611.
+
+\bibitem{mannwhitney1947}
+Mann, H. B., \& Whitney, D. R. (1947).
+On a test of whether one of two random variables is stochastically larger than the other.
+\textit{The Annals of Mathematical Statistics}, 18(1), 50--60.
+
+\bibitem{kruskal1952}
+Kruskal, W. H., \& Wallis, W. A. (1952).
+Use of ranks in one-criterion variance analysis.
+\textit{Journal of the American Statistical Association}, 47(260), 583--621.
+
+\bibitem{cramers1946}
+Cramér, H. (1946).
+\textit{Mathematical Methods of Statistics}.
+Princeton University Press.
+
+\bibitem{scikit-learn}
+Pedregosa, F., Varoquaux, G., Gramfort, A., et al. (2011).
+Scikit-learn: Machine learning in Python.
+\textit{Journal of Machine Learning Research}, 12, 2825--2830.
+
+\bibitem{dataset}
+Conjunto de datos de siniestros viales usado en el trabajo final de curso.
+Archivo local: \texttt{02\_04\_crash\_severity (1).csv}.
+
+\end{thebibliography}
+
+\end{document}
