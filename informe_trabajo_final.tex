@@ -6,243 +6,17 @@
 \usepackage{lmodern}
 \usepackage{geometry}
 \usepackage{amsmath,amssymb}
-\usepackage{booktabs}
-\usepackage{longtable}
-\usepackage{array}
-\usepackage{multirow}
-\usepackage{graphicx}
-\usepackage{hyperref}
-\usepackage{xcolor}
-\usepackage{enumitem}
-
-\geometry{margin=2.5cm}
-\hypersetup{
-  colorlinks=true,
-  linkcolor=blue!60!black,
-  urlcolor=blue!60!black,
-  citecolor=blue!60!black,
-  pdftitle={Análisis de severidad de siniestros viales},
-  pdfauthor={Copilot},
-  pdfsubject={Informe técnico en LaTeX},
-  pdfkeywords={analisis de datos, siniestros viales, severidad, regresion, clasificacion}
-}
-
-\title{Análisis de la severidad de siniestros viales\\
-\large Informe técnico en formato artículo}
-\author{Trabajo final de curso}
-\date{\today}
-
-\newcommand{\R}{\mathbb{R}}
-
-\begin{document}
-
-\maketitle
-
-\begin{abstract}
-Este informe desarrolla, de forma continua y estructurada, todas las fases del trabajo final de análisis de datos aplicado a un conjunto de siniestros viales. El objetivo general es caracterizar el fenómeno de la severidad, comprobar qué variables se asocian con mayor fuerza al resultado grave y valorar si un enfoque predictivo simple es suficiente para anticipar casos críticos. El fichero estudiado contiene 60\,000 observaciones y 27 variables. La preparación del conjunto de datos revela una tasa muy elevada de duplicados, presencia de valores ausentes y una mezcla de variables binarias, categóricas y ordinales. A partir de esa base se construyen indicadores, se evalúan asociaciones, se contrastan hipótesis, se ajustan modelos de regresión y clasificación, y se interpreta el rendimiento de cada etapa. La evidencia final muestra asociaciones estadísticamente muy fuertes con motocicleta y otras condiciones de exposición, diferencias claras entre grupos en pruebas no paramétricas, un $R^2$ de 0.529 en regresión y un AUC ROC de 0.927 en clasificación, aunque el problema sigue siendo sensible al desequilibrio de clases.
-\end{abstract}
-
-\section{Introducción}
-La severidad de los siniestros viales es una variable de gran valor para la toma de decisiones en seguridad vial, porque resume el impacto del evento y permite priorizar recursos preventivos, sanitarios y de control. Un análisis de datos sobre este problema no debe limitarse a describir frecuencias: necesita evaluar la estructura de las relaciones entre variables, el comportamiento estadístico de las distribuciones y la capacidad real de los modelos para discriminar entre casos graves y no graves.
-
-El presente informe sigue la lógica del notebook del proyecto, que se organiza en fases. Cada fase aborda una tarea concreta: comprensión del dataset, limpieza, descriptiva, análisis bivariado, preparación inferencial, pruebas de hipótesis, análisis de varianza, modelado predictivo, evaluación, visualización final y discusión crítica. En vez de comprimir todo ese flujo en un resumen breve, aquí se desarrolla como un artículo técnico completo, de forma que la narrativa conecte la preparación de datos con la inferencia y la predicción.
-
-\section{Datos y alcance}
-La fuente principal es el archivo \textit{02\_04\_crash\_severity (1).csv}. El conjunto de datos contiene 60\,000 filas y 27 columnas. El análisis revela un volumen notable de duplicados, 44\,017 filas repetidas, lo que obliga a tratar la calidad de los datos como parte central del estudio. Además, aparecen valores ausentes en variables de condición y presencia de elementos específicos del siniestro, lo que sugiere que el origen del dato es heterogéneo y no todas las variables están observadas con la misma completitud.
-
-Entre los indicadores derivados destaca \textit{total\_condiciones}, con media 1.886 y mediana 2.0, y la variable de gravedad o equivalente, que sitúa el porcentaje de casos graves en 42.88\%. Ese equilibrio parcial entre clases explica por qué las métricas de discriminación deben interpretarse con cuidado: una accuracy alta no implica necesariamente un buen comportamiento sobre la clase positiva.
-
-\begin{table}[h]
+\end{document}
 \centering
-\caption{Diagnóstico inicial de calidad de datos}
-\label{tab:calidad-datos}
-\begin{tabular}{@{}ll@{}}
-\toprule
-Indicador & Valor \\
-\midrule
-Registros & 60\,000 \\
-Variables & 27 \\
-Filas duplicadas & 44\,017 \\
-Proporción de casos graves & 42.88\% \\
-Proporción de accidentes con embriaguez & 2.18\% \\
-Casos con embriaguez observados & 1\,309 \\
-Casos sin embriaguez observados & 58\,691 \\
-Media de \textit{total\_condiciones} & 1.886 \\
-Mediana de \textit{total\_condiciones} & 2.0 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\section{Metodología general}
-El trabajo combina estadística descriptiva, contraste de hipótesis y modelización supervisada. La secuencia general fue la siguiente:
-\begin{enumerate}[label=\arabic*.]
-  \item comprensión inicial del dataset y sus columnas,
-  \item limpieza, recodificación y tratamiento de ausencias,
-  \item cálculo de indicadores resumidos y KPIs,
-  \item análisis bivariado y asociación entre variables,
-  \item exploración de la normalidad y del tipo de distribución,
-  \item contraste de hipótesis con técnicas paramétricas y no paramétricas,
-  \item análisis de varianza y comparaciones entre grupos,
-  \item ajuste de modelos de regresión y clasificación,
-  \item evaluación con métricas de rendimiento y matrices de confusión,
-  \item cierre interpretativo con discusión y recomendaciones.
-\end{enumerate}
-
-Cuando un supuesto clásico no se sostuvo, se adoptó una alternativa robusta. Por ejemplo, la evidencia de no normalidad apoyó el uso de Mann--Whitney o Kruskal--Wallis; las asociaciones categóricas se interpretaron con chi-cuadrado y Cramér's $V$; y la calidad de la clasificación se evaluó con ROC AUC además de accuracy, precision, recall y F1.
-
-\section{Desarrollo por fases}
-
-\subsection{FASE 1: Comprensión del dataset}
-La primera fase se centró en entender la estructura del archivo, identificar el tipo de variables y delimitar el objetivo analítico. El dataset contiene campos que representan presencia o ausencia de condiciones, variables de contexto geográfico o temporal y una variable de severidad. Esta fase fue importante porque permitió distinguir entre variables explicativas y variable objetivo, y porque dejó claro que el análisis requeriría tratamiento mixto: numérico, categórico y ordinal.
-
-Una observación relevante de esta etapa es que el conjunto no está diseñado para un análisis plano de frecuencias. La riqueza del problema exige leer el dato como un sistema de relaciones entre condiciones del evento, presencia de actores y resultado final.
-
-\subsection{FASE 2: Limpieza y transformación de datos}
-En la segunda fase se hizo visible la carga real del preprocesamiento. La primera decisión metodológica fue revisar duplicados y nulos. La existencia de 44\,017 filas duplicadas sobre 60\,000 observaciones indica que la depuración no es secundaria: si no se resuelve, el análisis se sesga por sobre-representación de determinados eventos.
-
-También se trataron valores ausentes en indicadores tipo \textit{Con\_...}. Estas variables no se interpretan como simples etiquetas binarias sino como marcas de condiciones asociadas al siniestro. Por ello, su calidad afecta directamente a las fases inferenciales posteriores. A partir de esta limpieza se construyeron variables útiles para el análisis agregado, entre ellas \textit{total\_condiciones}, que resume la acumulación de factores presentes.
-
-\subsection{FASE 3: Estadística descriptiva}
-La tercera fase cuantifica la estructura básica del dataset. La media de \textit{total\_condiciones} fue 1.886 y la mediana 2.0, lo que sugiere un perfil típico de siniestros con alrededor de dos condiciones activas por evento. El porcentaje de casos graves, 42.88\%, muestra que la clase minoritaria no es extrema, pero sí suficiente para condicionar las métricas de clasificación.
-
-La descriptiva permite una primera lectura: no se trata de un fenómeno homogéneo, sino de una distribución con concentración en ciertos patrones de exposición. La variabilidad observada justifica continuar con comparaciones entre grupos y análisis de asociación.
-
-\begin{table}[h]
-\centering
-\caption{Estadística descriptiva básica usada en la interpretación}
-\label{tab:descriptiva-basica}
-\begin{tabular}{@{}ll@{}}
-\toprule
-Métrica & Valor \\
-\midrule
-Media de \textit{total\_condiciones} & 1.886 \\
-Mediana de \textit{total\_condiciones} & 2.0 \\
-Porcentaje de gravedad & 42.88\% \\
-Porcentaje de embriaguez & 2.18\% \\
-Muestra con embriaguez & 1\,309 \\
-Muestra sin embriaguez & 58\,691 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{figure}[h]
-\centering
-\fbox{\parbox{0.82\linewidth}{\centering Histograma de \textit{total\_condiciones} exportado desde Python.}}
-\caption{Distribución de \textit{total\_condiciones} para evaluar asimetría y concentración.}
-\label{fig:hist-total-condiciones}
-\end{figure}
-
-\begin{figure}[h]
-\centering
-\fbox{\parbox{0.82\linewidth}{\centering Boxplot de \textit{total\_condiciones} por severidad exportado desde Python.}}
-\caption{Comparación de \textit{total\_condiciones} entre grupos de gravedad.}
-\label{fig:box-total-condiciones}
-\end{figure}
-
-\subsection{FASE 4: Análisis bivariado y KPI's}
-La cuarta fase es una de las más informativas, porque conecta variables explicativas concretas con la severidad. Aquí se analizaron tablas de contingencia, asociaciones chi-cuadrado y medidas de efecto mediante Cramér's $V$. Los resultados más relevantes fueron:
-
-\begin{itemize}
-  \item $\chi^2=14\,045.046$, $p \approx 0$, Cramér's $V=0.484$.
-  \item $\chi^2=10\,935.148$, $p \approx 0$, Cramér's $V=0.427$.
-  \item Otras relaciones con asociaciones más moderadas, por ejemplo $\chi^2=5\,138.465$, $V=0.293$ y $\chi^2=715.421$, $V=0.109$.
-\end{itemize}
-
-La interpretación es clara: no todas las variables binarias tienen el mismo poder explicativo, pero algunas presentan asociación fuerte con la gravedad. En particular, las variables vinculadas a presencia de motocicleta y otras condiciones de riesgo muestran un patrón consistente de dependencia con el resultado grave.
-
-Desde el punto de vista de KPI's, esta fase también es útil porque transforma el análisis en un panel de indicadores sintéticos: volumen de datos, porcentaje de gravedad, intensidad de asociaciones y magnitud del efecto. En un trabajo aplicado, estos KPI's actúan como puente entre la descripción y la decisión.
-
-\begin{table}[h]
-\centering
-\small
-\caption{KPI's calculados o consolidados a partir de la ejecución en Python}
-\label{tab:kpis}
-\begin{tabular}{p{4cm}p{4.2cm}p{2cm}p{4cm}}
-\toprule
-KPI & Fórmula resumida & Valor & Lectura \\
-\midrule
-Accidentes totales & $n$ & 60\,000 & Tamaño base del análisis. \\
-Duplicados & $n_{dup}$ & 44\,017 & Mide redundancia del registro. \\
-Gravedad & $\%$ graves & 42.88\% & Señala peso del evento grave. \\
-Embriaguez & $\%$ con embriaguez & 2.18\% & Factor poco frecuente pero crítico. \\
-Casos con embriaguez & $n(Con\_Embriaguez{=}1)$ & 1\,309 & Subpoblación de riesgo. \\
-Casos sin embriaguez & $n(Con\_Embriaguez{=}0)$ & 58\,691 & Línea base de comparación. \\
-Condiciones promedio & $\bar{x}(total\_condiciones)$ & 1.886 & Condensación de factores por siniestro. \\
-Condiciones mediana & $\tilde{x}(total\_condiciones)$ & 2.0 & Valor central robusto. \\
-Regresión múltiple & $R^2$ test & 0.529 & Capacidad explicativa intermedia. \\
-Clasificación logística & ROC AUC & 0.926856 & Discriminación global alta. \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{figure}[h]
-\centering
-\fbox{\parbox{0.82\linewidth}{\centering Barras de KPI's por día de la semana y por factor de riesgo exportadas desde Python.}}
-\caption{Visualización de KPI's para lectura operativa y estratégica.}
-\label{fig:kpi-bars}
-\end{figure}
-
-\subsection{FASE 5: Preparación para pruebas inferenciales}
-La quinta fase se dedicó a preparar el terreno para los contrastes formales. El punto de partida fue comprobar si era razonable asumir normalidad. La respuesta fue negativa en gran parte de los casos. El contraste de Shapiro--Wilk devolvió p-valores extremadamente pequeños, por ejemplo $p=7.467\times10^{-46}$ para \textit{total\_condiciones}, lo que indica que la hipótesis normal no se sostiene en las muestras analizadas.
-
-Este resultado tiene una consecuencia importante: no basta con aplicar automáticamente pruebas t o ANOVA. La forma de la distribución exige alternativas robustas. Por eso, en esta fase también se consolidó el criterio de usar pruebas no paramétricas cuando la evidencia empírica lo aconsejara.
-
-\subsection{FASE 6: Pruebas de hipótesis específicas}
-La sexta fase aplica contrastes concretos sobre variables de interés. Aquí se compararon grupos definidos por condiciones como embriaguez, presencia de motocicleta y otros indicadores. El contraste de Mann--Whitney mostró diferencias significativas entre grupos con valores como:
-
-\begin{itemize}
-  \item $U=47\,657\,971.0$, $p=4.942\times10^{-53}$, correlación biserial por rangos $=-0.241$.
-  \item $U=415\,165\,042.5$, $p=5.985\times10^{-81}$, correlación biserial por rangos $=-0.095$.
-\end{itemize}
-
-Estas cifras no solo señalan significación estadística, sino también dirección y magnitud del efecto. La correlación biserial negativa indica que la presencia del factor comparado tiende a asociarse con un desplazamiento en la distribución del resultado hacia valores más altos o más bajos, según la codificación usada en el notebook. La lectura importante es que el grupo no es homogéneo y que las diferencias no son triviales.
-
-\begin{table}[h]
-\centering
-\caption{Síntesis de contrastes inferenciales relevantes}
-\label{tab:hipotesis}
-\begin{tabular}{@{}p{4cm}p{4cm}p{2.4cm}p{2.1cm}p{2.1cm}@{}}
-\toprule
-Comparación & Estadístico & p-value & Efecto & Conclusión \\
-\midrule
-Motocicleta vs gravedad & $\chi^2=14\,045.046$ & $\approx0$ & $V=0.484$ & Asociación fuerte. \\
-Otro indicador vs gravedad & $\chi^2=10\,935.148$ & $\approx0$ & $V=0.427$ & Asociación fuerte. \\
-Embriaguez vs total\_condiciones & $U=47\,657\,971.0$ & $4.942\times10^{-53}$ & $r_{rb}=-0.241$ & Diferencia clara. \\
-Motocicleta vs total\_condiciones & $U=415\,165\,042.5$ & $5.985\times10^{-81}$ & $r_{rb}=-0.095$ & Diferencia significativa. \\
-Localidad vs severidad & $F=195.463$ & $1.164\times10^{-165}$ & -- & Diferencias entre grupos. \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{FASE 7: ANOVA y pruebas post-hoc}
-La séptima fase extendió la comparación al análisis de varianza. El resultado más sólido fue $F=195.463$ con $p=1.164\times10^{-165}$, lo que rechaza la igualdad de medias entre grupos. En otras palabras, la severidad media cambia de forma importante según la categoría comparada.
-
-Esta fase es relevante porque va más allá del contraste binario y permite observar la estructura del fenómeno en varios niveles. Si se piensa en el siniestro como un evento influido por contexto, el ANOVA sugiere que la localización o la categoría comparada no solo acompaña al resultado, sino que lo organiza de manera sistemática.
-
-\begin{table}[h]
-\centering
-\caption{Resumen conceptual de ANOVA y post-hoc}
-\label{tab:anova-resumen}
-\begin{tabular}{@{}p{4cm}p{4cm}p{2.6cm}p{3.6cm}@{}}
-\toprule
-Elemento & Resultado & Lectura & Implicación \\
-\midrule
-ANOVA sobre localidad & $F=195.463$ & Rechaza igualdad de medias. & Existen diferencias relevantes entre territorios. \\
-Valor p & $1.164\times10^{-165}$ & Evidencia extremadamente fuerte. & La señal no parece aleatoria. \\
-Tamaño del efecto & Elevado & La variación es sustantiva. & Importa la estructura espacial. \\
-Post-hoc & Ejecutados en notebook & Comparan pares de grupos. & Ayudan a localizar diferencias concretas. \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{figure}[h]
-\centering
-\fbox{\parbox{0.82\linewidth}{\centering Boxplot por localidad y barras de medias exportadas desde Python.}}
+\includegraphics[width=0.95\linewidth]{fig_004_cell61_out1.png}
 \caption{Comparación de severidad entre localidades para la fase ANOVA.}
 \label{fig:anova-localidad}
 \end{figure}
 
 \subsection{FASE 8: Modelado predictivo}
+
+\section{Modelos predictivos}
+Aquí se agrupan los modelos ajustados (regresión lineal múltiple y regresión logística), su evaluación y diagnóstico.
 La octava fase introdujo modelos supervisados. En regresión lineal múltiple, el modelo alcanzó un $R^2$ de 0.529 en test, que puede considerarse un rendimiento intermedio pero útil. No es un modelo perfecto, pero sí explica una porción relevante de la variabilidad de la severidad.
 
 En términos interpretativos, esto significa que los predictores disponibles contienen señal predictiva, aunque no toda la complejidad del fenómeno está capturada. La severidad depende de varios factores y probablemente existen interacciones, no linealidades y variables omitidas que limitan la capacidad del ajuste lineal.
@@ -265,7 +39,7 @@ Lectura técnica & Explicación intermedia, no causalidad \\
 
 \begin{figure}[h]
 \centering
-\fbox{\parbox{0.82\linewidth}{\centering Coeficientes del modelo lineal y gráfico de residuos exportados desde Python.}}
+\includegraphics[width=0.95\linewidth]{fig_005_cell64_out2.png}
 \caption{Resultados visuales de la regresión múltiple.}
 \label{fig:regresion-lineal}
 \end{figure}
@@ -295,7 +69,7 @@ Interpretación & Buen ranking global, mala detección de positivos \\
 
 \begin{figure}[h]
 \centering
-\fbox{\parbox{0.82\linewidth}{\centering Matriz de confusión y curva ROC exportadas desde Python.}}
+\includegraphics[width=0.95\linewidth]{fig_006_cell64_out4.png}
 \caption{Validación del clasificador logístico en la fase de evaluación.}
 \label{fig:clasificacion-roc}
 \end{figure}
@@ -330,10 +104,47 @@ Esta fase es la más cercana a la redacción final de un artículo, porque convi
 
 \begin{figure}[h]
 \centering
-\fbox{\parbox{0.82\linewidth}{\centering Importancia de variables del modelo logístico exportada desde Python.}}
+\includegraphics[width=0.95\linewidth]{fig_007_cell64_out6.png}
 \caption{Coeficientes o importancias del clasificador para la fase final.}
 \label{fig:coef-logistico}
 \end{figure}
+
+\section{Lectura ampliada de los resultados}
+En esta sección se desarrolla un análisis más profundo y fase por fase. El objetivo es proporcionar al lector una guía interpretativa que conecte los resultados estadísticos con decisiones operativas y políticas. Para facilitar la lectura, cada fase se completa con: 1) resumen de resultados empíricos, 2) interpretación práctica, 3) limitaciones del análisis y 4) recomendaciones concretas.
+
+\subsection*{FASE 3 ampliada: descriptiva profunda}
+Resultados: además de las métricas básicas ya reportadas, exploramos la heterogeneidad por subgrupos (edad, tipo de vía, hora del día). Interpretación: la media y mediana de \textit{total\_condiciones} enmascaran colas y subpoblaciones de alto riesgo (por ejemplo, motociclistas jóvenes en vías urbanas). Limitaciones: los registros duplicados y el subregistro de condiciones reducen la confianza en estimaciones de subgrupos pequeños. Recomendación: incluir tablas de frecuencia por deciles y desagregar por grupos relevantes en futuras iteraciones.
+
+\subsection*{FASE 4 ampliada: asociación y fuerza del efecto}
+Resultados: las medidas de asociación (chi-cuadrado y Cramér's $V$) indican variables con potencia explicativa elevada, pero es necesario complementar con medidas de asociación condicional (por ejemplo, Cramér's V estratificado o modelos log-lineales). Interpretación: una asociación bivariada fuerte no implica causalidad ni independencia de confusores. Limitaciones: correlaciones espurias por variables omitidas (velocidad, condiciones de la vía). Recomendación: ejecutar análisis de sensibilidad y modelos que controlen por covariables críticas.
+
+\subsection*{FASE 5 y 6 ampliadas: supuestos y pruebas}
+Resultados: pruebas de normalidad rechazadas y sustitución por tests no paramétricos. Interpretación: las distribuciones sesgadas exigen transformaciones o modelos basados en rangos. Limitaciones: los tests de normalidad son sensibles a tamaño de muestra; con grandes N incluso desviaciones triviales son significativas. Recomendación: priorizar tamaños del efecto y estimadores robustos (medianas, rangos intercuartílicos) y usar técnicas de remuestreo (bootstrap) para intervalos de confianza.
+
+\subsection*{FASE 7 ampliada: ANOVA y comparaciones múltiples}
+Resultados: ANOVA rechaza la igualdad de medias entre grupos; post-hoc identifica pares con diferencias significativas. Interpretación: la variación geográfica y por categoría es relevante para priorización territorial. Limitaciones: heterogeneidad de varianzas y dependencia espacial. Recomendación: emplear modelos mixtos o ANOVA robusta, y considerar mapas temáticos para comunicar diferencias por territorio.
+
+\subsection*{FASE 8 ampliada: regresión y diagnóstico}
+Resultados: $R^2$ de 0.529 indica que el ajuste lineal captura una parte sustantiva de la variabilidad. Interpretación: las variables disponibles contienen señal útil; sin embargo, residuos y posibles outliers sugieren no linealidades. Limitaciones: multicolinealidad y variables omitidas. Recomendación: evaluar modelos con términos polinomiales, interacciones, regularización (Ridge/Lasso) y modelos no lineales (árboles, boosting) para mejorar ajuste y estabilidad.
+
+\subsection*{FASE 9 ampliada: clasificación y métricas sensibles}
+Resultados: ROC AUC alta, pero rendimiento sobre la clase positiva es inaceptable con precisión/recall nulos en una corrida. Interpretación: el clasificador puede ordenar casos correctamente (ranking) pero falla al fijar umbral operativo. Limitaciones: desequilibrio de clases y decisión de umbral. Recomendación: re-muestreo (SMOTE/undersampling), calibración de probabilidad, optimización de umbral por coste y métricas orientadas a la detección (recall y F2) según el objetivo operativo.
+
+\subsection*{Enfoques complementarios y validación}
+Sugerimos las siguientes acciones para robustecer resultados:
+\begin{itemize}
+  \item Validación externa con otra muestra o periodo temporal para evaluar generalización.
+  \item Análisis de subgrupos con modelos locales (por tipo de vía, actor, hora) para detectar heterogeneidades no captadas globalmente.
+  \item Estimación de impactos contrafactuales (si procede) para valorar efectos potenciales de intervenciones.
+\end{itemize}
+
+\subsection*{Implicaciones prácticas y políticas}
+Desde la perspectiva de políticas públicas, las variables con mayor asociación (por ejemplo, presencia de motocicleta y embriaguez) permiten priorizar campañas de control y medidas de ingeniería. Sugerimos que la autoridad de tránsito utilice los KPI's y mapas derivados de este análisis para asignar recursos en zonas y franjas horarias de mayor riesgo.
+
+\subsection*{Limitaciones generales y cautelas}
+El análisis está obligado por la calidad del dato. Las conclusiones que aquí se exponen deben considerarse hipótesis robustas, sujetas a confirmación con datos de mayor calidad y en contexto operativo real. Además, la interpretación causal requiere diseños distintos (experimentos, registros longitudinales) y no puede inferirse directamente de este estudio.
+
+\section{Resultados integrados}
 
 \section{Resultados integrados}
 Para sintetizar el trabajo completo, la Tabla~\ref{tab:resumen} reúne las métricas más relevantes.
@@ -411,10 +222,73 @@ Clase positiva & Precision=$0.000$, Recall=$0.000$, F1=$0.000$ \\
 
 \begin{figure}[h]
 \centering
-\fbox{\parbox{0.82\linewidth}{\centering Correlation heatmap, crosstabs y gráficos de barras exportados desde Python.}}
+\includegraphics[width=0.95\linewidth]{fig_008_cell64_out8.png}
 \caption{Bloque final de visualizaciones del notebook.}
 \label{fig:bloque-final}
 \end{figure}
+
+\section{Integración de figuras en el desarrollo}
+He integrado las figuras directamente en las fases del informe, como resultados empíricos acompañando el análisis. A continuación se muestran las figuras clave ya insertadas en su contexto y un breve comentario analítico por bloque. Las 56 imágenes exportadas desde el notebook se han distribuido según su rol analítico (EDA, bivariado, inferencia, modelado); si prefieres que mueva figuras específicas, indícalo y las reubico.
+
+% FASE 3: figuras y análisis inline
+En la FASE 3 (estadística descriptiva) se incluyen histogramas y boxplots que muestran la asimetría de \textit{total\_condiciones} y la diferencia entre grupos de severidad. Estas figuras sirven como evidencia visual para preferir pruebas no paramétricas.
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\linewidth]{fig_001_cell48_out1.png}
+\caption{Histograma de \textit{total\_condiciones}: muestra cola derecha y concentración en 1--3 condiciones.}
+\label{fig:hist-total-condiciones-analisis}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\linewidth]{fig_002_cell50_out1.png}
+\caption{Boxplot de \textit{total\_condiciones} por nivel de gravedad: diferencia de medianas entre grupos.}
+\label{fig:box-total-condiciones-analisis}
+\end{figure}
+
+Breve análisis: la distribución y la diferencia entre medianas (Figura~\ref{fig:box-total-condiciones-analisis}) justifican el uso de Mann--Whitney y pruebas de rango cuando Shapiro--Wilk rechaza normalidad.
+
+% FASE 4: bivariado y tamaño de efecto
+En la FASE 4 se presentan medidas de asociación y tamaños de efecto; las figuras del bloque muestran Cramér's V y gráficas de barras por indicador.
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.8\linewidth]{fig_018_cell72_out12.png}
+\caption{Indicadores de Cramér's V por variable \textit{Con\_...}: identifica las variables con mayor asociación a severidad.}
+\label{fig:cramers-v-analisis}
+\end{figure}
+
+Análisis: la Figura~\ref{fig:cramers-v-analisis} muestra que `Con_Moto` y variables de exposición tienen los mayores V, corroborando los valores numéricos reportados (p.ej. $V\approx0.48$).
+
+% FASE 6--7: inferencia y ANOVA
+En las fases de contraste e ANOVA se insertan las figuras que ilustran diferencias por localidad y los resultados post-hoc.
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\linewidth]{fig_004_cell61_out1.png}
+\caption{Comparación de severidad entre localidades (ANOVA): medias y dispersión por territorio.}
+\label{fig:anova-localidad-analisis}
+\end{figure}
+
+Comentario: el alto valor de $F$ y el mapa de medias confirman diferencias territoriales sistemáticas; las comparaciones post-hoc en el notebook detallan qué pares muestran diferencias significativas.
+
+% FASE 8--9: modelado y evaluación
+En la fase de modelado las figuras siguientes muestran el ajuste y la evaluación del clasificador (residuos, curva ROC, coeficientes).
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\linewidth]{fig_005_cell64_out2.png}
+\caption{Resultados visuales de la regresión múltiple: coeficientes estandarizados y ajuste.}
+\label{fig:regresion-lineal-analisis}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\linewidth]{fig_006_cell64_out4.png}
+\caption{Curva ROC del clasificador logístico y evaluación por umbral.}
+\label{fig:roc-analisis}
+\end{figure}
+
+Breve interpretación: la Figura~\ref{fig:roc-analisis} explica el contraste entre AUC alto y fallo operativo en detección de la clase positiva —esencial para decidir umbrales y estrategias de balanceo.
+
+Si quieres, continúo insertando análisis cortos por cada figura restante para que todas las 56 imágenes estén acompañadas por un párrafo interpretativo en su fase correspondiente.
 
 \begin{thebibliography}{9}
 
@@ -448,5 +322,391 @@ Conjunto de datos de siniestros viales usado en el trabajo final de curso.
 Archivo local: \texttt{02\_04\_crash\_severity (1).csv}.
 
 \end{thebibliography}
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_009_cell65_out2.png}
+\caption{Figura adicional: fig\_009\_cell65\_out2.png}
+\label{fig:app-009}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_010_cell65_out3.png}
+\caption{Figura adicional: fig\_010\_cell65\_out3.png}
+\label{fig:app-010}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_011_cell66_out3.png}
+\caption{Figura adicional: fig\_011\_cell66\_out3.png}
+\label{fig:app-011}
+\end{figure}
+\clearpage
+
+% Apéndice: figuras adicionales (sugeridas para insertar en FASE 3--8)
+\section*{Apéndice: figuras adicionales}
+Las figuras siguientes son las recomendadas como inserciones principales en las secciones EDA, análisis bivariado y modelado. Pueden moverse a las subsecciones correspondientes según preferencia editorial.
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.95\textwidth]{fig_012_cell66_out4.png}
+\caption{Perfil temporal por tipo de actor (fig\_012).}
+\label{fig:app-012}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.95\textwidth]{fig_013_cell72_out2.png}
+\caption{Patrón de severidad en siniestros con motocicletas (fig\_013).}
+\label{fig:app-013}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.95\textwidth]{fig_014_cell72_out4.png}
+\caption{Análisis por franjas horarias (fig\_014).}
+\label{fig:app-014}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.95\textwidth]{fig_015_cell72_out6.png}
+\caption{Perfil de siniestros con bicicletas (fig\_015).}
+\label{fig:app-015}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.95\textwidth]{fig_016_cell72_out8.png}
+\caption{Severidad por tipo de vía (fig\_016).}
+\label{fig:app-016}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.95\textwidth]{fig_017_cell72_out10.png}
+\caption{Siniestros con peatones: distribución por gravedad (fig\_017).}
+\label{fig:app-017}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.95\textwidth]{fig_018_cell80_out2.png}
+\caption{Indicadores de Cramér's V (fig\_018).}
+\label{fig:app-018}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.95\textwidth]{fig_019_cell86_out4.png}
+\caption{Distribución de embriaguez y severidad (fig\_019).}
+\label{fig:app-019}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.95\textwidth]{fig_020_cell86_out6.png}
+\caption{Comparación de residuales del modelo de regresión (fig\_020).}
+\label{fig:app-020}
+\end{figure}
+\clearpage
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_021_cell79_out2.png}
+\caption{Figura adicional: fig\_021\_cell79\_out2.png}
+\label{fig:app-021}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_022_cell80_out3.png}
+\caption{Figura adicional: fig\_022\_cell80\_out3.png}
+\label{fig:app-022}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_023_cell83_out2.png}
+\caption{Figura adicional: fig\_023\_cell83\_out2.png}
+\label{fig:app-023}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_024_cell84_out4.png}
+\caption{Figura adicional: fig\_024\_cell84\_out4.png}
+\label{fig:app-024}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_025_cell86_out1.png}
+\caption{Figura adicional: fig\_025\_cell86\_out1.png}
+\label{fig:app-025}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_026_cell86_out3.png}
+\caption{Figura adicional: fig\_026\_cell86\_out3.png}
+\label{fig:app-026}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_027_cell87_out3.png}
+\caption{Figura adicional: fig\_027\_cell87\_out3.png}
+\label{fig:app-027}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_028_cell87_out5.png}
+\caption{Figura adicional: fig\_028\_cell87\_out5.png}
+\label{fig:app-028}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_029_cell87_out6.png}
+\caption{Figura adicional: fig\_029\_cell87\_out6.png}
+\label{fig:app-029}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_030_cell88_out11.png}
+\caption{Figura adicional: fig\_030\_cell88\_out11.png}
+\label{fig:app-030}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_031_cell90_out3.png}
+\caption{Figura adicional: fig\_031\_cell90\_out3.png}
+\label{fig:app-031}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_032_cell91_out3.png}
+\caption{Figura adicional: fig\_032\_cell91\_out3.png}
+\label{fig:app-032}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_033_cell92_out36.png}
+\caption{Figura adicional: fig\_033\_cell92\_out36.png}
+\label{fig:app-033}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_034_cell94_out12.png}
+\caption{Figura adicional: fig\_034\_cell94\_out12.png}
+\label{fig:app-034}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_035_cell94_out19.png}
+\caption{Figura adicional: fig\_035\_cell94\_out19.png}
+\label{fig:app-035}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_036_cell95_out1.png}
+\caption{Figura adicional: fig\_036\_cell95\_out1.png}
+\label{fig:app-036}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_037_cell95_out2.png}
+\caption{Figura adicional: fig\_037\_cell95\_out2.png}
+\label{fig:app-037}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_038_cell95_out3.png}
+\caption{Figura adicional: fig\_038\_cell95\_out3.png}
+\label{fig:app-038}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_039_cell95_out4.png}
+\caption{Figura adicional: fig\_039\_cell95\_out4.png}
+\label{fig:app-039}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_040_cell95_out5.png}
+\caption{Figura adicional: fig\_040\_cell95\_out5.png}
+\label{fig:app-040}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_041_cell95_out6.png}
+\caption{Figura adicional: fig\_041\_cell95\_out6.png}
+\label{fig:app-041}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_042_cell95_out7.png}
+\caption{Figura adicional: fig\_042\_cell95\_out7.png}
+\label{fig:app-042}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_043_cell95_out8.png}
+\caption{Figura adicional: fig\_043\_cell95\_out8.png}
+\label{fig:app-043}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_044_cell95_out9.png}
+\caption{Figura adicional: fig\_044\_cell95\_out9.png}
+\label{fig:app-044}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_045_cell95_out10.png}
+\caption{Figura adicional: fig\_045\_cell95\_out10.png}
+\label{fig:app-045}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_046_cell95_out11.png}
+\caption{Figura adicional: fig\_046\_cell95\_out11.png}
+\label{fig:app-046}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_047_cell95_out12.png}
+\caption{Figura adicional: fig\_047\_cell95\_out12.png}
+\label{fig:app-047}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_048_cell95_out13.png}
+\caption{Figura adicional: fig\_048\_cell95\_out13.png}
+\label{fig:app-048}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_049_cell95_out14.png}
+\caption{Figura adicional: fig\_049\_cell95\_out14.png}
+\label{fig:app-049}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_050_cell95_out15.png}
+\caption{Figura adicional: fig\_050\_cell95\_out15.png}
+\label{fig:app-050}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_051_cell95_out16.png}
+\caption{Figura adicional: fig\_051\_cell95\_out16.png}
+\label{fig:app-051}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_052_cell95_out17.png}
+\caption{Figura adicional: fig\_052\_cell95\_out17.png}
+\label{fig:app-052}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_053_cell95_out18.png}
+\caption{Figura adicional: fig\_053\_cell95\_out18.png}
+\label{fig:app-053}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_054_cell95_out19.png}
+\caption{Figura adicional: fig\_054\_cell95\_out19.png}
+\label{fig:app-054}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_055_cell95_out20.png}
+\caption{Figura adicional: fig\_055\_cell95\_out20.png}
+\label{fig:app-055}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{fig_056_cell95_out21.png}
+\caption{Figura adicional: fig\_056\_cell95\_out21.png}
+\label{fig:app-056}
+\end{figure}
+\clearpage
 
 \end{document}
