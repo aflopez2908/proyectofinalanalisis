@@ -49,6 +49,8 @@ mediante Técnicas de Analítica de Datos y Python\\[1.5em]}
 {\Large Trabajo Final de Curso --- Analítica de Datos\\[2em]}
 {\large\bfseries Estudiante:}\\[0.4em]
 {\large Juan Carlos Sánchez Martínez\\[2em]}
+{\large Alvaro Felipe Lopez Russi\\[2em]}
+{\large Sebastian Felipe Baracaldo Amado\\[2em]}
 {\large\bfseries Docente:}\\[0.4em]
 {\large Curso de Analítica de Datos\\[2em]}
 {\large Bogotá, Mayo de 2026}
@@ -311,8 +313,8 @@ intervenciones: los atropellos, aunque menos frecuentes, involucran usuarios vul
 tienen mayor proporción de heridos graves.
 
 El panel inferior izquierdo evidencia una distribución relativamente uniforme por día de
-semana de lunes a sábado ($\approx 14$--16\,\% cada día), con caída notable el domingo
-($\approx 10.5\,\%$). Esto sugiere que la accidentalidad está asociada a la actividad
+semana de lunes a sábado ($\approx 14$--16\% cada día), con caída notable el domingo
+($\approx 10.5\%$). Esto sugiere que la accidentalidad está asociada a la actividad
 laboral y de movilidad cotidiana, no a eventos especiales de fin de semana.
 
 El panel inferior derecho ubica a Kennedy como la localidad con mayor carga de siniestros
@@ -381,7 +383,7 @@ de condiciones no discrimina por sí solo la severidad del evento.}
 La Figura~\ref{fig:hist-obligatorios} presenta los histogramas de las variables más
 relevantes para el modelado. \texttt{total\_condiciones} muestra distribución discreta y
 asimétrica. \texttt{Con\_Velocidad} y \texttt{Con\_Huecos} tienen casi la totalidad de
-sus registros en 0 (subregistro extremo: $< 1\,\%$ de ocurrencia), lo cual las hace
+sus registros en 0 (subregistro extremo: $< 1\%$ de ocurrencia), lo cual las hace
 prácticamente inútiles para modelado sin corrección por sesgo. \texttt{Gravedad\_cod}
 muestra tres picos discretos en 0, 1 y 2, siendo el valor 0 el más frecuente.
 
@@ -502,7 +504,7 @@ El gráfico central muestra la asimetría entre factores de riesgo: \texttt{Con\
 presente en el 30.2\,\% de los accidentes, mientras \texttt{Con\_Embriaguez} apenas llega
 al 2.18\,\%, diferencia que no refleja la magnitud real de la embriaguez al volante. El
 gráfico de localidades confirma la concentración: las cinco primeras localidades concentran
-$> 40\,\%$ del total de siniestros.
+$> 40\%$ del total de siniestros.
 
 \begin{figure}[H]
 \centering
@@ -1235,7 +1237,7 @@ recall de la clase grave es 0\,\%. Esta es la \textit{paradoja del desbalance}.}
 \end{figure}
 
 \textbf{La paradoja del desbalance:} Con 14\,721 negativos y 273 positivos, un clasificador
-que prediga siempre 0 tiene accuracy = $14\,727 / 15\,000 = 98.1\,\%$. Esto ilustra por
+que prediga siempre 0 tiene accuracy = $14\,727 / 15\,000 = 98.1\%$. Esto ilustra por
 qué la accuracy no es una métrica adecuada cuando las clases están desbalanceadas.
 
 \subsection{Interpretación Crítica}
