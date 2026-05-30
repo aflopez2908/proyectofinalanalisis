@@ -4,291 +4,1413 @@
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
-\usepackage{geometry}
+\usepackage[top=3cm,bottom=2.5cm,left=3cm,right=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{float}
 \usepackage{amsmath,amssymb}
-\end{document}
+\usepackage{hyperref}
+\usepackage{caption}
+\usepackage{parskip}
+\usepackage{fancyhdr}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{xcolor}
+
+\graphicspath{{figuras_extraidas/}}
+
+\hypersetup{colorlinks=true,linkcolor=blue!60!black,citecolor=green!50!black,urlcolor=blue}
+
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\small Analítica de Datos --- Trabajo Final}
+\lhead{\small Análisis Predictivo de Siniestros Viales}
+\cfoot{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{document}
+% ─────────────────────────────────────────────────────────────────────────────
+
+% ============================================================
+% 1. PORTADA
+% ============================================================
+\begin{titlepage}
 \centering
-\includegraphics[width=0.95\linewidth]{fig_004_cell61_out1.png}
-\caption{Comparación de severidad entre localidades para la fase ANOVA.}
-\label{fig:anova-localidad}
-\end{figure}
+{\LARGE\bfseries Universidad Católica de Colombia\\[0.4em]
+Facultad de Ingeniería\\[0.4em]
+Ingeniería de Sistemas\\[2em]}
+\rule{\linewidth}{0.5pt}\\[1.5em]
+{\huge\bfseries Análisis Predictivo y Estadístico de la\\[0.3em]
+Severidad de Accidentes de Tránsito\\[0.3em]
+mediante Técnicas de Analítica de Datos y Python\\[1.5em]}
+\rule{\linewidth}{0.5pt}\\[1.5em]
+{\Large Trabajo Final de Curso --- Analítica de Datos\\[2em]}
+{\large\bfseries Estudiante:}\\[0.4em]
+{\large Juan Carlos Sánchez Martínez\\[2em]}
+{\large\bfseries Docente:}\\[0.4em]
+{\large Curso de Analítica de Datos\\[2em]}
+{\large Bogotá, Mayo de 2026}
+\vfill
+{\normalsize
+Dataset: \texttt{02\_04\_crash\_severity.csv} --- 60\,000 registros --- 27 variables\\
+Herramientas: Python 3, Jupyter Notebook, pandas, scikit-learn, scipy, seaborn}
+\end{titlepage}
 
-\subsection{FASE 8: Modelado predictivo}
+\tableofcontents
+\newpage
 
-\section{Modelos predictivos}
-Aquí se agrupan los modelos ajustados (regresión lineal múltiple y regresión logística), su evaluación y diagnóstico.
-La octava fase introdujo modelos supervisados. En regresión lineal múltiple, el modelo alcanzó un $R^2$ de 0.529 en test, que puede considerarse un rendimiento intermedio pero útil. No es un modelo perfecto, pero sí explica una porción relevante de la variabilidad de la severidad.
+% ============================================================
+% 2. INTRODUCCIÓN
+% ============================================================
+\section{Introducción}
 
-En términos interpretativos, esto significa que los predictores disponibles contienen señal predictiva, aunque no toda la complejidad del fenómeno está capturada. La severidad depende de varios factores y probablemente existen interacciones, no linealidades y variables omitidas que limitan la capacidad del ajuste lineal.
+La analítica de datos se ha convertido en uno de los pilares fundamentales de la Ingeniería
+de Sistemas moderna. Las organizaciones públicas y privadas toman decisiones estratégicas
+basadas en información cuantitativa extraída de grandes volúmenes de datos. Sin embargo, el
+verdadero valor de los datos no radica en almacenarlos o visualizarlos, sino en
+\textit{interpretarlos críticamente}, comprender sus patrones y transformar los resultados en
+conocimiento útil para la toma de decisiones.
 
-\begin{table}[h]
+El presente trabajo integra los temas desarrollados durante el curso: estadística descriptiva,
+captura y limpieza de datos, análisis exploratorio, KPI's, pruebas de hipótesis, pruebas
+paramétricas y no paramétricas, ANOVA, regresión múltiple y regresión logística. El objetivo
+es desarrollar una solución analítica completa utilizando Python como lenguaje principal.
+
+El dataset contiene información sobre accidentes de tránsito y variables asociadas a la
+severidad del accidente: presencia de motocicletas, bicicletas, peatones, embriaguez,
+huecos, transporte público, entre otros factores. Más allá de ejecutar código o generar
+gráficos, este trabajo desarrolla \textbf{pensamiento crítico analítico}: cada prueba
+estadística se interpreta desde una perspectiva técnica, social y ética.
+
+% ============================================================
+% 3. PLANTEAMIENTO DEL PROBLEMA
+% ============================================================
+\section{Planteamiento del Problema}
+
+Las ciudades modernas enfrentan desafíos complejos relacionados con la movilidad urbana y
+la seguridad vial. El aumento del parque automotor, el crecimiento demográfico y las
+deficiencias en infraestructura generan escenarios donde los accidentes de tránsito
+representan una problemática social, económica y de salud pública.
+
+Las autoridades requieren herramientas analíticas que permitan identificar patrones en los
+accidentes más graves, predecir factores de riesgo y diseñar políticas públicas basadas en
+evidencia. La entidad gubernamental que suministra el dataset requiere un análisis integral
+del comportamiento de la accidentalidad registrada.
+
+El problema central puede formularse así: \textit{¿Qué variables presentes en el registro de
+accidentes se asocian significativamente con la severidad del siniestro, y en qué medida es
+posible construir un modelo predictivo confiable a partir de ellas?}
+
+Este problema tiene dos dimensiones. La primera es \textbf{estadística}: identificar qué
+factores tienen asociación demostrable con la gravedad. La segunda es \textbf{social}: los
+factores con mayor peso analítico deben interpretarse en su contexto de movilidad, inequidad
+territorial y capacidad institucional de respuesta.
+
+% ============================================================
+% 4. OBJETIVOS
+% ============================================================
+\section{Objetivos}
+
+\subsection*{Objetivo General}
+
+Desarrollar un sistema completo de análisis estadístico y predictivo en Python que permita
+identificar factores asociados a la severidad de accidentes de tránsito mediante técnicas de
+analítica descriptiva, inferencial y modelos de regresión.
+
+\subsection*{Objetivos Específicos}
+
+\begin{enumerate}[leftmargin=*]
+  \item Realizar procesos de captura, limpieza y transformación de datos.
+  \item Aplicar estadística descriptiva para comprender el comportamiento general del
+        dataset.
+  \item Diseñar KPI's relevantes para la interpretación de la accidentalidad.
+  \item Validar supuestos estadísticos mediante pruebas de normalidad.
+  \item Aplicar pruebas de hipótesis paramétricas y no paramétricas.
+  \item Implementar análisis ANOVA para comparar grupos territoriales.
+  \item Construir modelos de regresión múltiple y logística.
+  \item Interpretar críticamente los resultados obtenidos.
+  \item Elaborar conclusiones orientadas a la toma de decisiones.
+  \item Documentar el proceso analítico utilizando estándares técnicos.
+\end{enumerate}
+
+% ============================================================
+% 5. MARCO ANALÍTICO Y ESTADÍSTICO
+% ============================================================
+\section{Marco Analítico y Estadístico}
+
+El análisis se apoya en los siguientes fundamentos estadísticos:
+
+\textbf{Estadística descriptiva.} Las medidas de tendencia central (media, mediana) y
+dispersión (desviación estándar, rango intercuartílico) describen la distribución de las
+variables. En distribuciones asimétricas, la mediana es preferible a la media como medida
+robusta.
+
+\textbf{Pruebas de hipótesis.} La prueba chi-cuadrado de independencia evalúa si dos
+variables categóricas están asociadas. El coeficiente V de Cramér cuantifica la fuerza de
+esa asociación ($V \in [0,1]$, donde valores $> 0.3$ indican efecto moderado a grande). Para
+diferencias de medias/distribuciones se emplean la prueba $t$ de Welch (si se cumple
+normalidad aproximada) y Mann-Whitney U (no paramétrica).
+
+\textbf{ANOVA.} Permite comparar medias entre tres o más grupos. Si se rechaza la hipótesis
+nula ($F$ significativo), las comparaciones post-hoc identifican qué pares de grupos
+difieren.
+
+\textbf{Regresión múltiple.} Modela una variable respuesta continua como función lineal de
+varios predictores. El coeficiente $R^2$ indica la proporción de varianza explicada.
+
+\textbf{Regresión logística.} Estima la probabilidad de un evento binario. Los coeficientes
+se interpretan como log-odds; el AUC-ROC mide la capacidad discriminativa.
+
+\textbf{Diferencia entre significancia estadística y práctica.} Con $n = 60\,000$, cualquier
+diferencia trivial puede ser significativa ($p < 0.05$). Por ello, siempre se complementa
+el $p$-valor con el tamaño del efecto (V de Cramér, $r$ rank-biserial, $R^2$).
+
+% ============================================================
+% 6. METODOLOGÍA
+% ============================================================
+\section{Metodología}
+
+El proyecto sigue once fases sucesivas, cada una construida sobre los resultados de la
+anterior:
+
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{FASE 1 --- Comprensión del Dataset:} carga, identificación de dimensiones,
+        tipos de variables, nulos e inconsistencias.
+  \item \textbf{FASE 2 --- Limpieza y Transformación:} tratamiento de nulos, decisión sobre
+        duplicados, codificación y creación de variables derivadas.
+  \item \textbf{FASE 3 --- Estadística Descriptiva:} medidas de tendencia central,
+        dispersión, distribuciones, histogramas, boxplots, tablas dinámicas y correlaciones.
+  \item \textbf{FASE 4 --- KPI's y Previsión:} diseño y visualización de indicadores clave
+        de rendimiento.
+  \item \textbf{FASE 5 --- Normalidad:} pruebas Shapiro-Wilk e histogramas para validar
+        supuestos paramétricos.
+  \item \textbf{FASE 6 --- Pruebas de Hipótesis:} formulación de hipótesis, chi-cuadrado y
+        tamaños de efecto.
+  \item \textbf{FASE 7 --- Pruebas $t$:} comparación de grupos mediante prueba $t$
+        independiente de Welch.
+  \item \textbf{FASE 8 --- Wilcoxon y Mann-Whitney:} comparaciones no paramétricas cuando
+        no se cumple normalidad.
+  \item \textbf{FASE 9 --- ANOVA:} comparación de severidad entre localidades.
+  \item \textbf{FASE 10 --- Regresión Múltiple:} modelo predictivo lineal con selección de
+        variables.
+  \item \textbf{FASE 11 --- Regresión Logística:} clasificador binario (grave/no grave) con
+        evaluación de métricas.
+\end{enumerate}
+
+Todo el código fue desarrollado en Python 3 con Jupyter Notebook. Las librerías utilizadas
+incluyen \texttt{pandas}, \texttt{numpy}, \texttt{matplotlib}, \texttt{seaborn},
+\texttt{scipy.stats} y \texttt{scikit-learn}.
+
+% ============================================================
+% 7. LIMPIEZA Y PREPARACIÓN DE DATOS (FASE 2)
+% ============================================================
+\section{Limpieza y Preparación de Datos}
+
+\subsection{Comprensión del Dataset (FASE 1)}
+
+El dataset cargado contiene \textbf{60\,000 filas} y \textbf{27 columnas}. Las variables se
+clasifican en:
+
+\begin{itemize}
+  \item \textbf{Cualitativas nominales:} \texttt{Localidad}, \texttt{Clase\_Acc},
+        \texttt{Dia\_Semana\_Acc}, \texttt{Elemento\_Choque}.
+  \item \textbf{Cualitativa ordinal:}
+        \texttt{Gravedad\_Indicador\_Tradicional} (Solo Daños $<$ Con Heridos $<$ Con
+        Muertos).
+  \item \textbf{Variables binarias (Con\_*):} 22 indicadores de condición (0 = No, 1 =
+        Sí): \texttt{Con\_Bicicleta}, \texttt{Con\_Carga}, \texttt{Con\_Embriaguez},
+        \texttt{Con\_Huecos}, \texttt{Con\_Menores}, \texttt{Con\_Moto},
+        \texttt{Con\_Peaton}, entre otros.
+  \item \textbf{Variables derivadas} (creadas en FASE 2): \texttt{total\_condiciones},
+        \texttt{es\_grave}, \texttt{Gravedad\_cod}.
+\end{itemize}
+
+\begin{table}[H]
 \centering
-\caption{Resumen de regresión múltiple}
-\label{tab:regresion-multiple}
-\begin{tabular}{@{}ll@{}}
+\caption{Indicadores de calidad inicial del dataset}
+\label{tab:calidad}
+\begin{tabular}{@{}lrl@{}}
 \toprule
-Indicador & Valor \\
+Indicador & Valor & Implicación \\
 \midrule
-$R^2$ test & 0.529 \\
-MSE test & 0.169 (corrida de validación visible en el notebook) \\
-Variables explicativas & Moto, embriaguez, peatón, velocidad, huecos y otras \\
-Lectura técnica & Explicación intermedia, no causalidad \\
+Total de registros & 60\,000 & Tamaño suficiente para inferencia \\
+Total de variables & 27 & 5 dimensionales + 22 binarias \\
+Duplicados exactos & 44\,017 (73.4\,\%) & Alto: sin identificador único \\
+Nulos en \texttt{Elemento\_Choque} & 9\,841 (16.4\,\%) & Imputación necesaria \\
+Demás variables nulas & 0 & Dimensiones completas \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\begin{figure}[h]
+\textbf{¿Qué tan confiable es el dataset?} La ausencia de nulos en las dimensiones
+principales sugiere captura sistemática. Sin embargo, el 73.4\,\% de duplicados exactos es
+una señal de alerta: sin un identificador único de evento no se puede determinar si dos
+filas idénticas son el mismo accidente registrado dos veces o accidentes distintos con
+características iguales.
+
+\textbf{¿Existen variables que inducen sesgo?} Sí. \texttt{Con\_Embriaguez} (2.18\,\% de
+«Sí») y \texttt{Con\_Velocidad} (0.94\,\%) presentan frecuencias anómalamente bajas. Esto
+refleja sesgo de subregistro: la embriaguez se registra solo cuando hay prueba positiva en
+el lugar del accidente, no cada vez que ocurre. Interpretar «no hay asociación estadística
+entre embriaguez y gravedad» como «la embriaguez no influye» sería un error metodológico
+grave.
+
+\subsection{Tratamiento de Nulos y Duplicados}
+
+Los 9\,841 nulos de \texttt{Elemento\_Choque} se imputaron con la categoría
+\texttt{`Desconocido'}, preservando la validez del evento. No imputar habría generado
+pérdida del 16.4\,\% de registros sin ningún beneficio analítico.
+
+Respecto a los duplicados, la decisión fue \textbf{conservarlos}. Las razones son:
+\begin{enumerate}
+  \item El dataset no tiene identificador único de evento; eliminar duplicados implica asumir
+        que filas idénticas son errores de carga, lo cual no puede confirmarse.
+  \item Eliminar el 73.4\,\% de los registros eliminaría también patrones reales de
+        accidentalidad en condiciones similares.
+  \item El impacto analítico de los duplicados es que inflan los conteos y las pruebas
+        estadísticas (cualquier diferencia se vuelve significativa con $n = 60\,000$), lo
+        que obliga a complementar el $p$-valor con tamaños de efecto.
+\end{enumerate}
+
+\textbf{Implicación ética:} Presentar estadísticas de accidentalidad basadas en este
+dataset sin advertir la duplicación podría inducir a sobreestimar la frecuencia de
+siniestros y a diseñar políticas con recursos mal asignados.
+
+\subsection{Estandarización y Variables Derivadas}
+
+\begin{itemize}
+  \item \texttt{Dia\_Semana\_Acc}: homogeneización con \texttt{capitalize()}.
+  \item Variables categóricas convertidas a tipo \texttt{category}.
+  \item Variables \texttt{Con\_*} codificadas 1/0 para cálculos numéricos.
+  \item \texttt{total\_condiciones}: suma de los 22 indicadores \texttt{Con\_*} activos por
+        registro. Funciona como proxy de la complejidad del accidente.
+  \item \texttt{es\_grave}: binario (1 si gravedad $\neq$ «Solo Daños»).
+  \item \texttt{Gravedad\_cod}: ordinal (0 = Solo Daños, 1 = Con Heridos, 2 = Con
+        Muertos).
+\end{itemize}
+
+% ============================================================
+% 8. ESTADÍSTICA DESCRIPTIVA (FASE 3)
+% ============================================================
+\section{Estadística Descriptiva}
+
+\subsection{Distribuciones de Frecuencia}
+
+La Figura~\ref{fig:distribuciones} resume los patrones globales del dataset. El panel
+superior izquierdo revela que el 57.2\,\% de los siniestros son de «Solo Daños», el
+41.4\,\% generan heridos y apenas el 1.4\,\% son fatales. Esta distribución asimétrica
+hacia los eventos menos graves es característica de los sistemas de registro administrativo:
+los accidentes leves se registran con mayor sistematicidad que los graves, que suelen
+involucrar múltiples entidades.
+
+El panel superior derecho muestra que el choque es la clase de accidente dominante (83.4\,\%
+del total), seguido por atropello (11.7\,\%). Esta proporción es relevante para priorizar
+intervenciones: los atropellos, aunque menos frecuentes, involucran usuarios vulnerables y
+tienen mayor proporción de heridos graves.
+
+El panel inferior izquierdo evidencia una distribución relativamente uniforme por día de
+semana de lunes a sábado ($\approx 14$--16\,\% cada día), con caída notable el domingo
+($\approx 10.5\,\%$). Esto sugiere que la accidentalidad está asociada a la actividad
+laboral y de movilidad cotidiana, no a eventos especiales de fin de semana.
+
+El panel inferior derecho ubica a Kennedy como la localidad con mayor carga de siniestros
+($> 7\,000$ registros), seguida por Engativá y Usaquén. Esta concentración puede reflejar
+tanto mayor densidad vehicular como menor infraestructura de control vial en estas zonas.
+
+\begin{figure}[H]
 \centering
-\includegraphics[width=0.95\linewidth]{fig_005_cell64_out2.png}
-\caption{Resultados visuales de la regresión múltiple.}
-\label{fig:regresion-lineal}
+\includegraphics[width=0.95\linewidth]{fig_001_cell48_out1.png}
+\caption{Distribuciones de frecuencia: gravedad del accidente, clase de accidente,
+proporción por día de semana y top 10 localidades. La asimetría en gravedad y la
+dominancia del choque condicionan todos los análisis posteriores.}
+\label{fig:distribuciones}
 \end{figure}
 
-\subsection{FASE 9: Evaluación y validación}
-La novena fase centró la atención en la calidad de la predicción. El modelo de clasificación logística presentó un área bajo la curva ROC de 0.926856, una cifra que sugiere gran capacidad de discriminación global. Sin embargo, la evaluación detallada mostró que la accuracy puede ser engañosa cuando el sistema está desbalanceado. En una corrida concreta se observó accuracy de 0.981, pero precision, recall y F1 iguales a 0.000 para la clase positiva.
+\subsection{Histogramas: Total de Condiciones Activas}
 
-La conclusión es metodológica: una métrica global puede ocultar un fallo muy serio en la clase que realmente interesa. En un problema de seguridad vial, no detectar los casos graves tiene mucho más coste que una ligera pérdida de exactitud general. Por eso, el informe insiste en usar ROC AUC, recall y F1 junto con la accuracy.
+La Figura~\ref{fig:histogramas} muestra que la variable \texttt{total\_condiciones} sigue
+una distribución discreta sesgada a la derecha: el valor más frecuente es 1 condición activa
+($\approx 18\,500$ registros), seguido de 2 y 3. El panel derecho confirma que
+\texttt{Con\_Moto} es la condición más registrada ($\approx 18\,000$ registros), lo que
+convierte a la motocicleta en el actor vial con mayor presencia relativa en los siniestros.
 
-\begin{table}[h]
+\textbf{¿Qué implica este patrón?} La mayoría de los accidentes se registran con pocas
+condiciones activas. Esto puede reflejar tanto la realidad (accidentes simples dominan
+estadísticamente) como el subregistro: los formularios de captura solo recogen las
+condiciones más visibles. Un accidente puede tener velocidad excesiva, embriaguez y estado
+de la vía deteriorado, pero solo se registran las más obvias o las que el agente de
+tránsito puede verificar en el momento.
+
+\begin{figure}[H]
 \centering
-\caption{Métricas de clasificación reportadas por Python}
-\label{tab:clasificacion}
-\begin{tabular}{@{}ll@{}}
+\includegraphics[width=0.95\linewidth]{fig_002_cell50_out1.png}
+\caption{Histograma del número de condiciones activas por accidente (izq.) y frecuencia
+absoluta de cada condición \texttt{Con\_*} (der.). \texttt{Con\_Moto} domina claramente,
+señal de la alta exposición de motociclistas en el sistema vial.}
+\label{fig:histogramas}
+\end{figure}
+
+\subsection{Boxplots: Condiciones por Gravedad y Clase}
+
+La Figura~\ref{fig:boxplots} muestra que la mediana de \texttt{total\_condiciones} es
+prácticamente la misma (2) entre los tres niveles de gravedad. Sin embargo, los accidentes
+«Con Muertos» presentan una distribución ligeramente más compacta (menor dispersión), lo
+que podría indicar que los accidentes fatales ocurren con patrones de condiciones más
+específicos. En el panel derecho, los atropellos presentan la mediana más alta entre todas
+las clases de accidente, coherente con la complejidad inherente de los eventos con peatones.
+
+\textbf{¿Qué riesgo social evidencia este patrón?} La similitud de medianas entre «Solo
+Daños» y «Con Muertos» indica que el número de condiciones activas \textit{por sí solo} no
+es un buen predictor de la gravedad. Esto sugiere que la \textit{combinación específica} de
+condiciones (cuáles están activas, no cuántas) es lo que determina la severidad del
+resultado.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{fig_003_cell52_out1.png}
+\caption{Boxplots de \texttt{total\_condiciones} por nivel de gravedad (izq.) y clase de
+accidente (der.). La similitud de medianas entre niveles de gravedad indica que el conteo
+de condiciones no discrimina por sí solo la severidad del evento.}
+\label{fig:boxplots}
+\end{figure}
+
+\subsection{Histogramas Obligatorios: Variables Clave}
+
+La Figura~\ref{fig:hist-obligatorios} presenta los histogramas de las variables más
+relevantes para el modelado. \texttt{total\_condiciones} muestra distribución discreta y
+asimétrica. \texttt{Con\_Velocidad} y \texttt{Con\_Huecos} tienen casi la totalidad de
+sus registros en 0 (subregistro extremo: $< 1\,\%$ de ocurrencia), lo cual las hace
+prácticamente inútiles para modelado sin corrección por sesgo. \texttt{Gravedad\_cod}
+muestra tres picos discretos en 0, 1 y 2, siendo el valor 0 el más frecuente.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{fig_036_cell95_out1.png}
+\caption{Histogramas de \texttt{total\_condiciones}, \texttt{Con\_Velocidad},
+\texttt{Con\_Huecos} y \texttt{Gravedad\_cod}. El subregistro extremo en
+\texttt{Con\_Velocidad} y \texttt{Con\_Huecos} limita su uso como predictores confiables.}
+\label{fig:hist-obligatorios}
+\end{figure}
+
+\subsection{Boxplots Obligatorios: Gravedad por Dimensiones}
+
+La Figura~\ref{fig:box-obligatorios} presenta boxplots de gravedad segmentada por las
+principales dimensiones. En el panel de localidades, la mediana es 1 en todas las
+localidades analizadas, pero la dispersión varía: algunas localidades periféricas
+(Usme, Tunjuelito) muestran colas superiores más cortas, lo que podría reflejar menor
+registro de accidentes graves o menor exposición. En el panel por día de semana, no hay
+diferencias marcadas en mediana, aunque el viernes muestra el bigote superior más amplio.
+Los boxplots de \texttt{Con\_Moto} y \texttt{Con\_Peaton} revelan algo importante: cuando
+hay moto o peatón involucrado, el boxplot se comprime hacia el valor 1, indicando menor
+variabilidad pero mayor concentración en el nivel «Con Heridos».
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{fig_038_cell95_out3.png}
+\caption{Boxplots de \texttt{Gravedad\_cod} por localidad, día de semana,
+\texttt{Con\_Moto}, \texttt{Con\_Embriaguez} y \texttt{Con\_Peaton}. La compresión del
+boxplot hacia el valor 1 cuando hay moto o peatón indica concentración en accidentes con
+heridos.}
+\label{fig:box-obligatorios}
+\end{figure}
+
+\subsection{Medidas de Tendencia Central y Dispersión}
+
+\begin{table}[H]
+\centering
+\caption{Estadísticas descriptivas principales}
+\label{tab:descriptivas}
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+Variable & Media & Mediana & Desv. Std & Mín. & Máx. \\
+\midrule
+\texttt{total\_condiciones} & 1.886 & 2.000 & $\approx$1.30 & 0 & 8 \\
+\texttt{Gravedad\_cod}       & 0.429 & 0.000 & $\approx$0.59 & 0 & 2 \\
+\texttt{es\_grave}           & 0.429 & 0.000 & $\approx$0.49 & 0 & 1 \\
+\texttt{Con\_Moto}           & 0.302 & 0.000 & $\approx$0.46 & 0 & 1 \\
+\texttt{Con\_Peaton}         & 0.130 & 0.000 & $\approx$0.34 & 0 & 1 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Correlaciones}
+
+La Figura~\ref{fig:correlacion} presenta la matriz de correlación completa. Se destacan:
+correlación positiva entre \texttt{Con\_Moto} y \texttt{es\_grave} ($r \approx 0.30$);
+correlación positiva entre \texttt{Con\_Peaton} y \texttt{es\_grave} ($r \approx 0.25$);
+y correlaciones positivas entre variables de transporte público (\texttt{Con\_Tpi},
+\texttt{Con\_Tpp}, \texttt{Con\_Sitp}), esperables porque tienden a co-ocurrir. La
+correlación entre \texttt{total\_condiciones} y \texttt{es\_grave} ($r \approx 0.22$)
+confirma que más condiciones activas están asociadas a mayor severidad, aunque la
+relación es moderada.
+
+\textbf{¿Qué decisiones pueden tomarse?} Los indicadores más correlacionados con la
+gravedad son candidatos prioritarios para campañas de prevención vial. Sin embargo, debe
+evitarse la falacia de confundir correlación con causalidad: que «presencia de moto»
+correlacione con gravedad no implica que «las motos causan accidentes graves», sino que
+los accidentes que involucran motos tienden a reportarse con mayor severidad.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{fig_004_cell61_out1.png}
+\caption{Matriz de correlación (Pearson) entre variables indicadoras \texttt{Con\_*},
+variables derivadas y objetivos. Las correlaciones más altas con \texttt{es\_grave}
+corresponden a \texttt{Con\_Moto} y \texttt{Con\_Peaton}.}
+\label{fig:correlacion}
+\end{figure}
+
+% ============================================================
+% 9. KPI's Y PREVISIÓN (FASE 4)
+% ============================================================
+\section{KPI's y Previsión}
+
+Los KPI's (Key Performance Indicators) transforman los datos crudos en métricas
+interpretables para la toma de decisiones operativas. Se diseñaron los siguientes diez
+indicadores clave:
+
+\begin{table}[H]
+\centering
+\caption{KPI's diseñados para el análisis de accidentalidad}
+\label{tab:kpis}
+\small
+\begin{tabular}{@{}p{4.5cm}p{3.5cm}p{5cm}@{}}
+\toprule
+KPI & Fórmula & Interpretación estratégica \\
+\midrule
+\% Accidentes con heridos & $\frac{n_{\text{heridos}}}{N} \times 100$ & 41.4\,\%: base para alertas tempranas \\
+\% Accidentes graves (\texttt{es\_grave}) & $\frac{n_{\text{grave}}}{N} \times 100$ & 42.88\,\% incluye heridos y muertos \\
+Tasa accidentes con moto & $\frac{n_{\text{Con\_Moto}=1}}{N} \times 100$ & 30.2\,\%: motos en 3 de cada 10 siniestros \\
+\% Accidentes con peatón & $\frac{n_{\text{Con\_Peaton}=1}}{N} \times 100$ & 13.0\,\%: alto costo humano potencial \\
+\% Accidentes con embriaguez & $\frac{n_{\text{Con\_Emb}=1}}{N} \times 100$ & 2.18\,\%: subregistro severo \\
+Índice Kennedy & $\frac{n_{\text{Kennedy}}}{N} \times 100$ & 12.2\,\%: concentración en una localidad \\
+Proporción viernes & $\frac{n_{\text{Viernes}}}{N} \times 100$ & 15.9\,\%: día de mayor siniestralidad \\
+Promedio condiciones/accidente & $\frac{\sum \text{total\_condiciones}}{N}$ & 1.886: baja complejidad promedio \\
+\% Choque como clase & $\frac{n_{\text{Choque}}}{N} \times 100$ & 83.4\,\%: clase dominante \\
+\% Siniestros domingo & $\frac{n_{\text{Domingo}}}{N} \times 100$ & 10.5\,\%: menor accidentalidad semanal \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Visualización de KPI's}
+
+La Figura~\ref{fig:kpis-principales} sintetiza tres KPI's clave. El gráfico de barras por
+día de semana confirma que viernes y martes son los días de mayor accidentalidad
+proporcional, mientras el domingo desciende casi 5 puntos porcentuales respecto al viernes.
+El gráfico central muestra la asimetría entre factores de riesgo: \texttt{Con\_Moto} está
+presente en el 30.2\,\% de los accidentes, mientras \texttt{Con\_Embriaguez} apenas llega
+al 2.18\,\%, diferencia que no refleja la magnitud real de la embriaguez al volante. El
+gráfico de localidades confirma la concentración: las cinco primeras localidades concentran
+$> 40\,\%$ del total de siniestros.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{fig_011_cell66_out3.png}
+\caption{KPI's visualizados: proporción de accidentes por día de semana (izq.), factores
+de riesgo principales expresados como porcentaje (centro) y top localidades por número de
+accidentes (der.).}
+\label{fig:kpis-principales}
+\end{figure}
+
+\subsection{KPI: Distribución de Complejidad de Accidentes}
+
+La Figura~\ref{fig:kpi-condiciones} muestra el histograma con curva de densidad
+(\textit{KDE}) de \texttt{total\_condiciones}. Los picos multimodales a 1, 2 y 3
+condiciones indican que los accidentes siguen patrones discretos de complejidad. El pico
+más alto en 1 condición sugiere que la mayoría de los eventos registrados son «simples» en
+términos de factores concurrentes. La cola hacia 5--8 condiciones representa siniestros
+de alta complejidad con múltiples factores activos simultáneamente.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\linewidth]{fig_012_cell66_out4.png}
+\caption{KPI de complejidad: distribución de \texttt{total\_condiciones} con curva KDE.
+Los picos discretos reflejan la estructura binaria de los indicadores \texttt{Con\_*}:
+la suma de ceros y unos genera una distribución multimodal característica.}
+\label{fig:kpi-condiciones}
+\end{figure}
+
+\subsection{KPI: Relación chi$^2$ vs Cramér's V}
+
+La Figura~\ref{fig:kpi-chi2-v} muestra la fuerza de asociación (Cramér's $V$) y el
+estadístico $\chi^2$ para los cinco indicadores con mayor asociación a la severidad.
+\texttt{Con\_Moto} lidera en $\chi^2$ ($= 14\,045$) y en $V$ ($= 0.484$). Este resultado
+indica que la presencia de motocicleta es el factor individual con mayor relación estadística
+con la gravedad del accidente.
+
+\textbf{¿Puede un KPI ser engañoso?} Sí. Presentar solo el $\chi^2$ sin el $V$ de Cramér
+sería engañoso: con 60\,000 registros, cualquier diferencia marginal produce un $\chi^2$
+enorme. El $V$ de Cramér normaliza el estadístico por el tamaño muestral y los grados de
+libertad, permitiendo comparaciones honestas entre variables.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{fig_009_cell65_out2.png}
+\caption{Fuerza de asociación (Cramér's $V$) y estadístico $\chi^2$ por indicador
+\texttt{Con\_*}. La separación entre \texttt{Con\_Moto}/\texttt{Con\_Peaton} y el resto
+es marcada, confirmando su preponderancia analítica.}
+\label{fig:kpi-chi2-v}
+\end{figure}
+
+La Figura~\ref{fig:scatter-chi2-v} muestra la relación bidimensional entre $\chi^2$ y
+$V$: los indicadores con mayor efecto práctico (\texttt{Con\_Moto}, \texttt{Con\_Peaton})
+se ubican en el cuadrante superior derecho, mientras \texttt{Con\_Embriaguez} queda
+relegado al origen, evidenciando su baja capacidad discriminativa por subregistro.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\linewidth]{fig_010_cell65_out3.png}
+\caption{Dispersión $\chi^2$ vs.\ Cramér's $V$. La posición de \texttt{Con\_Embriaguez}
+en el origen no significa que la embriaguez no influya en la severidad; refleja el
+subregistro sistemático de este factor.}
+\label{fig:scatter-chi2-v}
+\end{figure}
+
+% ============================================================
+% 10. PRUEBAS DE NORMALIDAD (FASE 5)
+% ============================================================
+\section{Pruebas de Normalidad}
+
+\subsection{Importancia de la Normalidad}
+
+La normalidad es un supuesto de las pruebas paramétricas (prueba $t$ de Student, ANOVA
+clásico, regresión con intervalos de confianza exactos). Si las variables no siguen una
+distribución normal, estas pruebas pueden producir inferencias inválidas. La importancia
+práctica de verificar la normalidad es decidir si se usan métodos paramétricos o sus
+equivalentes no paramétricos (Mann-Whitney U, Kruskal-Wallis).
+
+Con $n = 60\,000$, el \textit{Teorema del Límite Central} (TLC) garantiza que las medias
+muestrales se distribuyen aproximadamente normal independientemente de la distribución
+original. Sin embargo, el TLC \textbf{no implica} que las variables individuales sean
+normales, ni que los residuos de un modelo lineal sean normales con respuesta ordinal
+discreta.
+
+\subsection{Resultados: Con\_Bicicleta}
+
+La Figura~\ref{fig:norm-bicicleta} muestra el histograma y QQ-plot de
+\texttt{Con\_Bicicleta}. La distribución es binaria: el 92\,\% de los registros tiene
+valor 0. El QQ-plot muestra dos plataformas horizontales, completamente alejadas de la
+línea diagonal teórica. El test de Shapiro-Wilk (aplicado sobre muestra) rechaza
+normalidad con $p \approx 0$.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{fig_013_cell72_out2.png}
+\caption{Histograma y QQ-plot de \texttt{Con\_Bicicleta} ($n = 60\,000$, media = 0.08).
+La distribución binaria es incompatible con la normalidad; el QQ-plot lo confirma con sus
+dos plataformas características.}
+\label{fig:norm-bicicleta}
+\end{figure}
+
+\subsection{Resultados: Variables Adicionales}
+
+Las Figuras~\ref{fig:norm-fig14}--\ref{fig:norm-fig19} muestran el mismo patrón para
+todas las variables \texttt{Con\_*}: distribuciones bimodales en 0 y 1, QQ-plots con
+plataformas horizontales y rechazos sistemáticos de normalidad. La Figura~\ref{fig:norm-moto}
+presenta el caso de \texttt{Con\_Moto}: media = 0.302, pico bimodal claro. Todas las
+variables \texttt{Con\_*} son binarias y por definición no pueden ser normales.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{fig_018_cell72_out12.png}
+\caption{Histograma y QQ-plot de \texttt{Con\_Moto} (media = 0.302). Las dos masas en 0
+y 1 confirman la naturaleza binaria. Shapiro-Wilk: $p \approx 10^{-58}$ en muestra.}
+\label{fig:norm-moto}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{fig_014_cell72_out4.png}
+\caption{Verificación de normalidad --- segunda variable \texttt{Con\_*}: patrón binario
+idéntico, rechazo de normalidad.}
+\label{fig:norm-fig14}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{fig_015_cell72_out6.png}
+\caption{Verificación de normalidad --- tercera variable.}
+\label{fig:norm-fig15}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{fig_016_cell72_out8.png}
+\caption{Verificación de normalidad --- cuarta variable.}
+\label{fig:norm-fig16}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{fig_017_cell72_out10.png}
+\caption{Verificación de normalidad --- quinta variable.}
+\label{fig:norm-fig17}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{fig_019_cell72_out14.png}
+\caption{Verificación de normalidad --- séptima variable \texttt{Con\_*}. El patrón
+se repite en todas las variables binarias del dataset.}
+\label{fig:norm-fig19}
+\end{figure}
+
+\subsection{Consecuencias Metodológicas}
+
+\begin{enumerate}
+  \item Todas las pruebas de comparación de grupos deben usar métodos \textbf{no
+        paramétricos} (Mann-Whitney U, Kruskal-Wallis) como prueba principal.
+  \item Las pruebas $t$ de Welch se aplican como referencia comparativa dado que con
+        $n > 30\,000$ por grupo el TLC estabiliza el error.
+  \item Para regresión lineal, la no normalidad de los \textit{predictores} no viola
+        supuestos; importa la normalidad de los \textit{residuos}.
+  \item Con $n = 60\,000$, cualquier diferencia trivial produce rechazo de normalidad en
+        pruebas formales (Shapiro-Wilk es hipersensible). Por eso se usan histogramas y
+        QQ-plots como diagnóstico complementario.
+\end{enumerate}
+
+\textbf{¿La normalidad es una propiedad real o una simplificación?} Es principalmente una
+simplificación matemática útil. Pocas variables reales siguen exactamente una distribución
+normal; la normalidad se aproxima bajo ciertas condiciones. En fenómenos de seguridad vial,
+las distribuciones son inherentemente discretas, sesgadas y a menudo multimodales. La
+estadística robusta y no paramétrica es más apropiada para este tipo de datos.
+
+% ============================================================
+% 11. PRUEBAS DE HIPÓTESIS (FASE 6)
+% ============================================================
+\section{Pruebas de Hipótesis}
+
+\subsection{Formulación de Hipótesis}
+
+Se formulan cuatro hipótesis orientadas a identificar los factores de mayor asociación con
+la gravedad:
+
+\begin{description}
+  \item[H1] $H_0$: La presencia de motocicleta no influye en la severidad del accidente.\\
+            $H_1$: La presencia de motocicleta sí influye significativamente.
+  \item[H2] $H_0$: Los accidentes con peatón involucrado tienen igual distribución de
+            severidad que los demás.\\
+            $H_1$: Los accidentes con peatón presentan distribución de severidad diferente.
+  \item[H3] $H_0$: Los accidentes con embriaguez registrada tienen igual distribución de
+            severidad.\\
+            $H_1$: Los accidentes con embriaguez presentan diferencias significativas.
+  \item[H4] $H_0$: El número de condiciones activas (\texttt{total\_condiciones}) es igual
+            entre accidentes graves y no graves.\\
+            $H_1$: Los accidentes graves tienen más condiciones activas.
+\end{description}
+
+\subsection{Resultados: Hipótesis 1 --- Motocicleta}
+
+La Figura~\ref{fig:hip-moto} muestra la distribución de \texttt{Severidad\_cod} según
+presencia de motocicleta. El grupo «Con Moto» (valor 1) presenta menor dispersión y la
+caja comprimida hacia valores de severidad bajos pero con outliers en el valor más alto.
+La interpretación visual sugiere que cuando hay moto, el accidente tiende a caer en el
+nivel «Con Heridos» con más consistencia.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.55\linewidth]{fig_005_cell64_out2.png}
+\caption{Distribución de \texttt{Severidad\_cod} según presencia de motocicleta. La
+compresión del boxplot en el grupo «Con Moto» indica mayor concentración en el nivel
+intermedio de severidad (Con Heridos).}
+\label{fig:hip-moto}
+\end{figure}
+
+Chi-cuadrado sobre tabla de contingencia \texttt{Con\_Moto} × \texttt{Gravedad}:
+$\chi^2 = 14\,045.046$, $p \approx 0$, Cramér's $V = 0.484$.
+
+\textbf{Decisión:} Se rechaza $H_0$. La asociación es estadísticamente significativa con
+un tamaño de efecto moderado-grande ($V > 0.3$). Esto significa que la presencia de
+motocicleta está fuertemente asociada al nivel de gravedad registrado.
+
+\textbf{Implicaciones reales:} No significa que las motos \textit{causen} la gravedad.
+Puede reflejar que los accidentes con motos tienen mayor probabilidad de registrarse como
+graves por la vulnerabilidad física del motociclista, que los protocolos de atención
+priorizan estos casos, o que la exposición al riesgo de las motos en el tráfico urbano es
+estructuralmente diferente a la de los automóviles.
+
+\subsection{Resultados: Hipótesis 2 --- Peatón}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.55\linewidth]{fig_006_cell64_out4.png}
+\caption{Distribución de \texttt{Severidad\_cod} según presencia de peatón. La diferencia
+entre los grupos es aún más marcada que en el caso de la motocicleta: el grupo «Con
+Peatón» tiene la caja centrada en 1 (Con Heridos) sin rango inferior.}
+\label{fig:hip-peaton}
+\end{figure}
+
+$\chi^2 \approx 10\,680$, $p \approx 0$, Cramér's $V \approx 0.43$. Se rechaza $H_0$.
+La interpretación es directa: los atropellos son inherentemente más graves porque el
+peatón carece de protección física. Una política de seguridad vial orientada a reducir
+la gravedad de los siniestros debe priorizar la protección del peatón.
+
+\subsection{Resultados: Hipótesis 3 --- Embriaguez}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.55\linewidth]{fig_007_cell64_out6.png}
+\caption{Distribución de \texttt{Severidad\_cod} según presencia de embriaguez. Los
+boxplots son prácticamente idénticos entre grupos, lo que, combinado con el subregistro
+severo (2.18\,\% de «Sí»), hace que la prueba no detecte diferencia significativa.}
+\label{fig:hip-embriaguez}
+\end{figure}
+
+$\chi^2 \approx 0$, $p = 0.177$ (Mann-Whitney), Cramér's $V \approx 0.002$. No se rechaza
+$H_0$.
+
+\textbf{Interpretación crítica:} Este resultado \textit{no significa} que la embriaguez
+no influya en la gravedad de los accidentes. Significa que el \textit{registro de
+embriaguez} no se asocia estadísticamente con la gravedad en este dataset. La causa más
+probable es el sesgo de subregistro: la embriaguez solo se registra cuando hay prueba
+positiva documentada. Un análisis que concluya «la embriaguez no es factor de riesgo»
+basándose en este resultado sería una interpretación estadística engañosa. Sería necesario
+comparar con registros de alcoholemia obligatoria para obtener conclusiones válidas.
+
+\subsection{Resultados: Hipótesis 4 --- Total de Condiciones}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.55\linewidth]{fig_008_cell64_out8.png}
+\caption{\texttt{total\_condiciones} por accidente grave vs.\ no grave. Ambas
+distribuciones son similares en mediana ($= 2$) pero el grupo grave presenta cola
+superior ligeramente más pronunciada.}
+\label{fig:hip-condiciones}
+\end{figure}
+
+Kruskal-Wallis: $H = 3\,880$, $p \approx 0$. Se rechaza $H_0$. Sin embargo, la diferencia
+práctica es pequeña: ambas medianas son 2. Esto confirma que el conteo de condiciones
+activas es un predictor débil de la gravedad por sí solo.
+
+\subsection{Ranking de Asociación: Todos los Indicadores}
+
+La Figura~\ref{fig:cramers-ranking} muestra el ranking completo de los 19 indicadores
+\texttt{Con\_*} con asociación significativa, ordenados por Cramér's $V$, y el diagrama
+de dispersión $p$-valor vs.\ tamaño de efecto. Se observa claramente una separación entre
+\texttt{Con\_Moto} y \texttt{Con\_Peaton} (efectos medianos-grandes) y el resto de
+indicadores (efectos pequeños). \texttt{Con\_Sitp} tiene el valor $V$ más bajo y $p$-valor
+más grande, sugiriendo que la presencia de SITP tiene escasa asociación con la gravedad.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{fig_020_cell75_out3.png}
+\caption{Ranking de indicadores \texttt{Con\_*} por Cramér's $V$ (izq.) y dispersión
+$p$-valor vs.\ efecto (der.). La brecha entre \texttt{Con\_Moto}/\texttt{Con\_Peaton}
+y el resto delimita los factores con relevancia práctica real.}
+\label{fig:cramers-ranking}
+\end{figure}
+
+\textbf{Errores tipo I y II:} Con $n = 60\,000$, el riesgo principal es el error tipo I
+de interpretación (no estadístico): rechazar $H_0$ y concluir «efecto relevante» cuando
+$V < 0.1$ indica efecto trivial. El error tipo II (falso negativo) es casi nulo dado el
+enorme poder estadístico de la muestra.
+
+% ============================================================
+% 12. PRUEBAS t (FASE 7)
+% ============================================================
+\section{Pruebas t}
+
+\subsection{Objetivo}
+
+La prueba $t$ compara si la media de una variable cuantitativa difiere significativamente
+entre dos grupos. Se aplica para comparar la severidad (o el número de condiciones) entre
+accidentes con y sin motocicleta, controlando por varianzas posiblemente distintas
+(prueba de Welch).
+
+\subsection{Validación de Supuestos}
+
+\begin{itemize}
+  \item \textbf{Normalidad:} Rechazada para \texttt{total\_condiciones} y
+        \texttt{Con\_Moto} (Shapiro-Wilk $p \approx 10^{-58}$). Con grupos de $n > 18\,000$
+        el TLC mitiga el problema; sin embargo, se complementa con Mann-Whitney.
+  \item \textbf{Homocedasticidad:} Levene $p \approx 0$, varianzas desiguales. Se usa
+        la corrección de Welch.
+  \item \textbf{Independencia:} Asumida; no hay dependencia temporal declarada en el
+        dataset.
+\end{itemize}
+
+\subsection{Resultados}
+
+\begin{table}[H]
+\centering
+\caption{Prueba $t$ de Welch: comparación por presencia de motocicleta}
+\label{tab:ttest}
+\begin{tabular}{@{}lrrl@{}}
+\toprule
+Estadístico & Con Moto & Sin Moto & Resultado \\
+\midrule
+$n$ & 18\,089 & 41\,911 & \\
+Media \texttt{total\_condiciones} & $\approx 2.1$ & $\approx 1.8$ & \\
+Prueba $t$ Welch & \multicolumn{2}{c}{$t = 131.9$, $p \approx 0$} & Se rechaza $H_0$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+La Figura~\ref{fig:ttest-moto} combina boxplot y violín para mostrar la distribución
+completa. La forma de violín revela que ambos grupos tienen distribuciones similares en
+estructura (multimodales, discretas), pero el grupo «Con Moto» tiene una concentración
+levemente mayor en valores intermedios.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{fig_022_cell80_out3.png}
+\caption{Boxplot y violín de \texttt{total\_condiciones} por presencia de motocicleta.
+La forma multimodal discreta confirma que la prueba $t$ es aproximada; la similitud de
+medianas (= 2 en ambos grupos) indica que la diferencia de medias es pequeña en términos
+prácticos.}
+\label{fig:ttest-moto}
+\end{figure}
+
+\subsection{Interpretación Crítica}
+
+\textbf{¿Una diferencia estadística implica causalidad?} No. Que los accidentes con
+motocicleta tengan en promedio 0.3 condiciones más activas que los sin motocicleta es
+estadísticamente significativo pero no causalmente informativo. Puede reflejar que los
+siniestros con motos ocurren en entornos de mayor riesgo (vías con más factores de
+exposición), que se documentan más condiciones cuando hay usuarios vulnerables, o que la
+combinación moto + otros factores es lo que explica la diferencia.
+
+\textbf{¿Existen variables ocultas?} Sí. Hora del día, tipo de vía, condiciones del
+pavimento, velocidad máxima permitida y experiencia del conductor son variables no
+disponibles en el dataset que pueden estar correlacionadas tanto con la presencia de
+motocicleta como con la gravedad, generando confusión.
+
+% ============================================================
+% 13. WILCOXON Y MANN-WHITNEY (FASE 8)
+% ============================================================
+\section{Wilcoxon y Mann-Whitney}
+
+\subsection{¿Cuándo usar pruebas no paramétricas?}
+
+Las pruebas no paramétricas no asumen distribución específica de los datos. Son preferibles
+cuando:
+\begin{itemize}
+  \item La distribución es claramente no normal (como en todos los indicadores
+        \texttt{Con\_*}).
+  \item Las muestras son pequeñas y la normalidad no puede asumirse.
+  \item La variable es ordinal o discreta con pocos valores posibles.
+  \item Existen outliers severos que distorsionan la media.
+\end{itemize}
+
+En este análisis, dado que \textit{todas} las variables son binarias o discretas y
+rechazan normalidad, Mann-Whitney U es la prueba principal para comparar grupos de dos
+categorías.
+
+\subsection{Aplicación: Con\_Moto y Con\_Peaton}
+
+\begin{table}[H]
+\centering
+\caption{Pruebas Mann-Whitney U para los principales factores}
+\label{tab:mannwhitney}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Factor & $n_1$ & $n_2$ & $U$ & $p$-valor \\
+\midrule
+Con\_Moto (1 vs 0)   & 18\,089 & 41\,911 & 415\,165\,043 & $5.98 \times 10^{-81}$ \\
+Con\_Peaton (1 vs 0) & 7\,782  & 52\,218 & significativo  & $\approx 0$ \\
+Con\_Embriaguez (1 vs 0) & 1\,309 & 58\,691 & 39\,135\,399 & $0.177$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+El rango biserial para \texttt{Con\_Moto} es $r = -0.095$, tamaño de efecto pequeño.
+La Figura~\ref{fig:mannwhitney-peaton} muestra el análisis de \texttt{Con\_Peaton}: los
+accidentes con peatón tienen distribución de \texttt{total\_condiciones} desplazada hacia
+valores más altos. El violín del grupo «Con Peatón» es más compacto y elevado, confirmando
+mayor concentración de condiciones activas en atropellos.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{fig_024_cell84_out4.png}
+\caption{Boxplot y violín de \texttt{total\_condiciones} por presencia de peatón. El grupo
+«Con Peatón» muestra mayor número de condiciones activas en la cola superior, coherente
+con la complejidad de los atropellos como eventos multifactoriales.}
+\label{fig:mannwhitney-peaton}
+\end{figure}
+
+\subsection{Diferencias entre Enfoque Paramétrico y No Paramétrico}
+
+\begin{itemize}
+  \item La prueba $t$ compara medias y es sensible a outliers. Con $n$ grande, cualquier
+        diferencia de media produce $t$ grande y $p \approx 0$.
+  \item Mann-Whitney compara rangos y es robusta a outliers y distribuciones no simétricas.
+        El rango biserial ($r$) es comparable al $d$ de Cohen para tamaños de efecto.
+  \item En este dataset, ambas pruebas producen los mismos resultados cualitativos dado el
+        tamaño muestral, pero el rango biserial $r = -0.095$ para \texttt{Con\_Moto}
+        comunica mejor que el efecto es pequeño en términos prácticos, aunque
+        estadísticamente robusto.
+\end{itemize}
+
+\textbf{¿Cuándo una prueba robusta es preferible?} Siempre que las distribuciones sean
+asimétricas, los datos sean ordinales o existan outliers influyentes. En analítica de
+seguridad vial, donde los eventos extremos (accidentes fatales) son los de mayor interés
+pero los menos frecuentes, los métodos robustos capturan mejor la realidad de los datos.
+
+% ============================================================
+% 14. ANOVA (FASE 9)
+% ============================================================
+\section{ANOVA}
+
+\subsection{Objetivo y Formulación}
+
+Se aplica ANOVA de un factor para evaluar si la media de \texttt{Gravedad\_cod} difiere
+significativamente entre las distintas localidades del dataset. La hipótesis es:
+
+\[H_0: \mu_{\text{Kennedy}} = \mu_{\text{Engativá}} = \cdots = \mu_{\text{Sumapaz}}\]
+\[H_1: \text{Al menos una media de localidad es diferente.}\]
+
+\subsection{Resultados}
+
+\[F = 195.463, \quad p = 1.164 \times 10^{-165}\]
+
+Se rechaza $H_0$ con altísima confianza. Existen diferencias significativas en la media de
+gravedad codificada entre localidades.
+
+La Figura~\ref{fig:anova-top5} muestra la distribución y medias para las cinco localidades
+más grandes. Kennedy presenta la media más alta ($\approx 0.52$), mientras Usaquén tiene la
+más baja ($\approx 0.30$). La diferencia entre Kennedy y Usaquén puede interpretarse como
+que, en Kennedy, un accidente promedio es más grave que en Usaquén.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{fig_021_cell79_out2.png}
+\caption{Distribución de \texttt{Gravedad\_cod} por localidad (top 5): boxplot (izq.) y
+media por localidad (der.). $F = 195.5$, $p \approx 10^{-165}$. Kennedy muestra la mayor
+severidad media, Usaquén la menor.}
+\label{fig:anova-top5}
+\end{figure}
+
+La Figura~\ref{fig:anova-todas} muestra el panorama completo de todas las localidades
+ordenadas por mediana de severidad. La mediana es 1 en casi todas (indicando predominio de
+«Con Heridos»), pero las diferencias en los bigotes y outliers revelan distintos perfiles
+de riesgo territorial.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{fig_030_cell88_out11.png}
+\caption{Severidad por localidad (todas), ordenadas por mediana. La mediana uniforme de 1
+en la mayoría contrasta con la variabilidad en la cola superior, que diferencia las
+localidades con mayor proporción de accidentes fatales.}
+\label{fig:anova-todas}
+\end{figure}
+
+\subsection{Interpretación Crítica}
+
+\textbf{¿Por qué ciertos territorios presentan mayor severidad?} Las posibles explicaciones
+son múltiples y no mutuamente excluyentes:
+
+\begin{itemize}
+  \item \textbf{Densidad vehicular y tipo de vías:} Localidades industriales o de alta
+        circulación (Kennedy, Fontibón) concentran más vehículos pesados, que generan
+        accidentes más graves.
+  \item \textbf{Infraestructura vial:} Localidades con mayor proporción de vías sin
+        separador, intersecciones sin semáforo o señalización deficiente pueden tener mayor
+        riesgo inherente.
+  \item \textbf{Desigualdad urbana:} Las localidades periféricas (Usme, Ciudad Bolívar)
+        pueden tener menos registro formal de accidentes, no necesariamente menor
+        accidentalidad real. El ANOVA mide diferencias en lo registrado, no en la
+        realidad completa.
+  \item \textbf{Presencia de motos:} Si algunas localidades tienen mayor proporción de
+        motociclistas (por ser zonas de entrega o de menor acceso al transporte público),
+        la mayor severidad puede ser un efecto de composición, no de la localidad per se.
+\end{itemize}
+
+\textbf{¿Los datos reflejan desigualdad urbana?} Parcialmente. La mayor severidad en
+Kennedy respecto a Usaquén podría reflejar tanto diferencias reales en la peligrosidad de
+las vías como diferencias en la densidad de usuarios vulnerables (motos, peatones) que
+caracterizan cada zona socioeconómica. Interpretar estos resultados sin este contexto
+sería una reducción estadística inaceptable para política pública.
+
+% ============================================================
+% 15. REGRESIÓN MÚLTIPLE (FASE 10)
+% ============================================================
+\section{Regresión Múltiple}
+
+\subsection{Construcción del Modelo}
+
+Se construyó un modelo de regresión lineal múltiple con \texttt{Gravedad\_cod} como
+variable dependiente (codificación ordinal: 0, 1, 2) y los indicadores \texttt{Con\_*} más
+variables categóricas codificadas como predictores. El pipeline incluye
+\texttt{OrdinalEncoder} para variables categóricas y validación cruzada estratificada de
+5 pliegues.
+
+\textbf{Selección de variables independientes:} Se incluyeron todas las variables
+\texttt{Con\_*} más \texttt{Clase\_Acc}, \texttt{Localidad} y \texttt{Elemento\_Choque}.
+Las variables con subregistro severo (\texttt{Con\_Velocidad}, \texttt{Con\_Huecos}) se
+incluyeron para que el modelo evaluara su aporte, esperando coeficientes cercanos a cero.
+
+\subsection{Métricas de Desempeño}
+
+\begin{table}[H]
+\centering
+\caption{Desempeño del modelo de regresión lineal múltiple}
+\label{tab:regresion}
+\begin{tabular}{@{}lr@{}}
 \toprule
 Métrica & Valor \\
 \midrule
-Accuracy & 0.981 \\
-Precision & 0.000 \\
-Recall & 0.000 \\
-F1-score & 0.000 \\
-ROC AUC & 0.926856 \\
-Interpretación & Buen ranking global, mala detección de positivos \\
+$R^2$ en conjunto de test & 0.400 \\
+MSE en conjunto de test & 0.169 \\
+CV $R^2$ (5-fold, media) & 0.398 \\
+Rango CV $R^2$ & [0.389, 0.406] \\
+RMSE & $\approx$ 0.411 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\begin{figure}[h]
+El modelo explica el \textbf{40\,\%} de la varianza de la gravedad. La consistencia entre
+test y validación cruzada ($R^2 = 0.400$ vs.\ $0.398$) indica \textbf{ausencia de
+sobreajuste}. La diferencia mínima entre pliegues ([0.389, 0.406]) confirma estabilidad.
+
+\subsection{Análisis de Residuos}
+
+La Figura~\ref{fig:residuos-regresion} muestra los valores reales vs.\ predichos. Los
+puntos azules (reales: 0, 1, 2) contrastan con los predichos continuos (naranja). El
+modelo predice valores intermedios entre las categorías discretas, lo cual es una
+limitación inherente de la regresión lineal sobre una variable ordinal.
+
+\begin{figure}[H]
 \centering
-\includegraphics[width=0.95\linewidth]{fig_006_cell64_out4.png}
-\caption{Validación del clasificador logístico en la fase de evaluación.}
-\label{fig:clasificacion-roc}
+\includegraphics[width=0.75\linewidth]{fig_029_cell87_out6.png}
+\caption{Valores reales (azul: 0, 1, 2) vs.\ predichos (naranja: continuos) de la
+regresión lineal. Los predichos se distribuyen entre las categorías reales, mostrando
+la limitación del modelo lineal para respuestas ordinales discretas.}
+\label{fig:residuos-regresion}
 \end{figure}
 
-\subsection{FASE 10: Visualizaciones finales y entrega}
-La décima fase consolidó la presentación de resultados mediante gráficos y tablas de apoyo. Aunque este documento no incrusta las imágenes generadas en el notebook, sí recoge su sentido analítico: gráficos de barras para tamaños de efecto, diagramas comparativos de regresión y elementos de apoyo para la matriz de confusión. Estas visualizaciones ayudan a transformar el análisis técnico en una narrativa comprensible para exposición o entrega final.
+La Figura~\ref{fig:residuos-qq} presenta el gráfico de residuos vs.\ predichos (izq.) y
+el QQ-plot de residuos (der.). Las franjas diagonales son consecuencia directa de la
+naturaleza discreta de la variable respuesta: para predichos cercanos a 0.5, el residuo
+puede ser $+0.5$ (si el real es 1) o $-0.5$ (si el real es 0), formando líneas paralelas.
+El QQ-plot muestra colas pesadas respecto a la normal teórica, esperables con respuesta
+ordinal.
 
-En un informe para publicación, esta fase sería el lugar natural para situar figuras con interpretación textual: distribución de severidad, efecto de las variables más asociadas, curvas ROC, comparación entre observado y predicho y representación de residuos.
-
-\begin{table}[h]
+\begin{figure}[H]
 \centering
-\caption{Inventario de figuras que debe acompañar el informe final}
-\label{tab:inventario-figuras}
-\begin{tabular}{@{}p{2cm}p{5.5cm}p{5cm}@{}}
-\toprule
-Fase & Figura esperada & Uso \\
-\midrule
-3 & Histograma y boxplot de \textit{total\_condiciones} & Ver forma, dispersión y asimetría. \\
-4 & Barras de KPI's y Cramér's $V$ & Identificar factores más relevantes. \\
-7 & Boxplot por localidad y medias & Visualizar diferencias entre territorios. \\
-8 & Coeficientes y residuos & Evaluar regresión lineal. \\
-9 & Matriz de confusión y ROC & Medir discriminación del clasificador. \\
-11 & Barras de coeficientes logísticos & Interpretar pesos del modelo. \\
-\bottomrule
-\end{tabular}
-\end{table}
+\includegraphics[width=0.95\linewidth]{fig_033_cell92_out36.png}
+\caption{Diagnóstico de residuos: residuos vs.\ predichos (izq.) y QQ-plot (der.). Las
+franjas diagonales son el patrón esperado cuando se aplica regresión lineal a una respuesta
+ordinal con tres niveles. No indican un fallo del modelo sino su limitación estructural.}
+\label{fig:residuos-qq}
+\end{figure}
 
-\subsection{FASE 11: Entregables y discusión crítica}
-La última fase no solo cierra el análisis, sino que obliga a leerlo críticamente. El conjunto de resultados deja tres mensajes principales. Primero, la calidad del dato es un condicionante central: un dataset con muchos duplicados y ausencias no puede interpretarse sin limpieza previa. Segundo, hay variables con peso estadístico real, especialmente las relacionadas con motocicleta y otros factores de exposición. Tercero, la predicción es prometedora pero no definitiva: el modelo discrimina bien a nivel global, aunque su rendimiento en la clase minoritaria sigue siendo insuficiente si se evalúa con métricas sensibles al desbalance.
-
-Esta fase es la más cercana a la redacción final de un artículo, porque convierte resultados en juicio crítico. No basta con decir que un modelo tiene un AUC alto; hay que reconocer qué falla, cuándo falla y por qué puede fallar.
-
-\begin{figure}[h]
+\begin{figure}[H]
 \centering
-\includegraphics[width=0.95\linewidth]{fig_007_cell64_out6.png}
-\caption{Coeficientes o importancias del clasificador para la fase final.}
+\includegraphics[width=0.75\linewidth]{fig_026_cell86_out3.png}
+\caption{Residuos vs.\ predichos de la regresión lineal. Las tres bandas de residuos
+corresponden a los tres valores posibles de \texttt{Gravedad\_cod}. La dispersión uniforme
+dentro de cada banda indica que no hay heteroscedasticidad severa.}
+\label{fig:residuos-lineal}
+\end{figure}
+
+\subsection{Interpretación Crítica}
+
+\textbf{¿Qué variables realmente aportan?} Las variables \texttt{Con\_Moto},
+\texttt{Con\_Peaton} y \texttt{Con\_Bicicleta} tienen los coeficientes positivos más altos,
+coherente con los resultados de las pruebas de hipótesis. \texttt{Con\_Embriaguez} y
+\texttt{Con\_Velocidad} tienen coeficientes cercanos a cero, confirmando que el subregistro
+los hace informativamente inútiles para el modelo.
+
+\textbf{¿El modelo explica causalidad o asociación?} Solo asociación. Un $R^2 = 0.40$
+significa que el 40\,\% de la varianza de la gravedad puede explicarse con las variables
+incluidas; el 60\,\% restante queda fuera del modelo. Las variables omitidas (velocidad
+real, condición de la vía, hora exacta) probablemente explican una parte importante de
+esa varianza no capturada.
+
+\textbf{¿Sobreajuste?} No. La estabilidad en validación cruzada descarta sobreajuste.
+
+\textbf{¿Multicolinealidad?} Las variables de transporte público (\texttt{Con\_Tpi},
+\texttt{Con\_Tpp}, \texttt{Con\_Sitp}) están correlacionadas entre sí, lo que puede
+inflar la varianza de sus coeficientes individuales. Se recomienda aplicar regularización
+(Ridge/Lasso) en iteraciones futuras.
+
+\textbf{¿Utilidad real del modelo?} Limitada pero presente. El modelo puede usarse para
+priorizar casos con mayor probabilidad de gravedad, pero no para tomar decisiones
+individuales de alto impacto (como triaje médico), donde las consecuencias de un falso
+negativo son graves.
+
+% ============================================================
+% 16. REGRESIÓN LOGÍSTICA (FASE 11)
+% ============================================================
+\section{Regresión Logística}
+
+\subsection{Construcción del Modelo}
+
+Se entrenó un clasificador logístico binario para predecir \texttt{es\_grave} (1 = grave,
+0 = no grave). La muestra de entrenamiento es de 60\,000 registros. Para la evaluación con
+datos balanceados se separó un 25\,\% para test con estratificación por clase.
+
+\textbf{Variable dependiente:} \texttt{es\_grave} (binaria: 1 si Con Heridos o Con
+Muertos, 0 si Solo Daños).
+
+\textbf{Variables independientes:} Los mismos predictores que en la regresión múltiple.
+
+\subsection{Coeficientes del Modelo}
+
+La Figura~\ref{fig:coef-logistico} muestra los 15 coeficientes con mayor magnitud.
+\texttt{Con\_Peaton} es el predictor positivo más influyente (coeficiente $\approx 3.0$),
+seguido de \texttt{Con\_Moto} ($\approx 1.25$) y \texttt{Con\_Bicicleta} ($\approx 1.0$).
+El coeficiente de \texttt{Elemento\_Choque\_cod} es negativo ($\approx -0.8$), indicando
+que ciertos tipos de elemento de choque están asociados a menor probabilidad de accidente
+grave.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\linewidth]{fig_031_cell90_out3.png}
+\caption{Top 15 coeficientes del clasificador logístico. Los valores positivos aumentan
+la probabilidad de clasificar un siniestro como grave. \texttt{Con\_Peaton} es
+el predictor de mayor peso, con coeficiente $\approx 3.0$ en escala log-odds.}
 \label{fig:coef-logistico}
 \end{figure}
 
-\section{Lectura ampliada de los resultados}
-En esta sección se desarrolla un análisis más profundo y fase por fase. El objetivo es proporcionar al lector una guía interpretativa que conecte los resultados estadísticos con decisiones operativas y políticas. Para facilitar la lectura, cada fase se completa con: 1) resumen de resultados empíricos, 2) interpretación práctica, 3) limitaciones del análisis y 4) recomendaciones concretas.
+\textbf{Interpretación:} Un coeficiente de 3.0 para \texttt{Con\_Peaton} en log-odds
+equivale a un \textit{odds ratio} de $e^3 \approx 20$: la probabilidad de ser clasificado
+como grave es 20 veces mayor cuando hay un peatón involucrado, manteniendo todo lo demás
+constante. Este resultado es consistente con los análisis previos y con la realidad física:
+el peatón es el usuario más vulnerable del sistema vial.
 
-\subsection*{FASE 3 ampliada: descriptiva profunda}
-Resultados: además de las métricas básicas ya reportadas, exploramos la heterogeneidad por subgrupos (edad, tipo de vía, hora del día). Interpretación: la media y mediana de \textit{total\_condiciones} enmascaran colas y subpoblaciones de alto riesgo (por ejemplo, motociclistas jóvenes en vías urbanas). Limitaciones: los registros duplicados y el subregistro de condiciones reducen la confianza en estimaciones de subgrupos pequeños. Recomendación: incluir tablas de frecuencia por deciles y desagregar por grupos relevantes en futuras iteraciones.
+\subsection{Curva ROC}
 
-\subsection*{FASE 4 ampliada: asociación y fuerza del efecto}
-Resultados: las medidas de asociación (chi-cuadrado y Cramér's $V$) indican variables con potencia explicativa elevada, pero es necesario complementar con medidas de asociación condicional (por ejemplo, Cramér's V estratificado o modelos log-lineales). Interpretación: una asociación bivariada fuerte no implica causalidad ni independencia de confusores. Limitaciones: correlaciones espurias por variables omitidas (velocidad, condiciones de la vía). Recomendación: ejecutar análisis de sensibilidad y modelos que controlen por covariables críticas.
+La Figura~\ref{fig:roc} muestra la curva ROC del clasificador con AUC = 0.93.
 
-\subsection*{FASE 5 y 6 ampliadas: supuestos y pruebas}
-Resultados: pruebas de normalidad rechazadas y sustitución por tests no paramétricos. Interpretación: las distribuciones sesgadas exigen transformaciones o modelos basados en rangos. Limitaciones: los tests de normalidad son sensibles a tamaño de muestra; con grandes N incluso desviaciones triviales son significativas. Recomendación: priorizar tamaños del efecto y estimadores robustos (medianas, rangos intercuartílicos) y usar técnicas de remuestreo (bootstrap) para intervalos de confianza.
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.55\linewidth]{fig_025_cell86_out1.png}
+\caption{Curva ROC del clasificador logístico. AUC = 0.93 indica alta capacidad
+discriminativa: el modelo puede ordenar correctamente los casos de mayor riesgo en el
+93\,\% de las comparaciones aleatorias entre un caso grave y uno no grave.}
+\label{fig:roc}
+\end{figure}
 
-\subsection*{FASE 7 ampliada: ANOVA y comparaciones múltiples}
-Resultados: ANOVA rechaza la igualdad de medias entre grupos; post-hoc identifica pares con diferencias significativas. Interpretación: la variación geográfica y por categoría es relevante para priorización territorial. Limitaciones: heterogeneidad de varianzas y dependencia espacial. Recomendación: emplear modelos mixtos o ANOVA robusta, y considerar mapas temáticos para comunicar diferencias por territorio.
+El AUC-ROC de 0.93 significa que si se toman al azar un accidente grave y uno no grave, el
+modelo asignará mayor probabilidad al grave en el 93\,\% de los casos. Esto es un indicador
+de discriminación, independiente del umbral de clasificación.
 
-\subsection*{FASE 8 ampliada: regresión y diagnóstico}
-Resultados: $R^2$ de 0.529 indica que el ajuste lineal captura una parte sustantiva de la variabilidad. Interpretación: las variables disponibles contienen señal útil; sin embargo, residuos y posibles outliers sugieren no linealidades. Limitaciones: multicolinealidad y variables omitidas. Recomendación: evaluar modelos con términos polinomiales, interacciones, regularización (Ridge/Lasso) y modelos no lineales (árboles, boosting) para mejorar ajuste y estabilidad.
+\subsection{Matriz de Confusión --- Escenario Balanceado}
 
-\subsection*{FASE 9 ampliada: clasificación y métricas sensibles}
-Resultados: ROC AUC alta, pero rendimiento sobre la clase positiva es inaceptable con precisión/recall nulos en una corrida. Interpretación: el clasificador puede ordenar casos correctamente (ranking) pero falla al fijar umbral operativo. Limitaciones: desequilibrio de clases y decisión de umbral. Recomendación: re-muestreo (SMOTE/undersampling), calibración de probabilidad, optimización de umbral por coste y métricas orientadas a la detección (recall y F2) según el objetivo operativo.
+La Figura~\ref{fig:matriz-balanceada} muestra la matriz de confusión sobre un conjunto de
+test con las clases relativamente balanceadas. Resultados: 6\,004 verdaderos negativos
+(TN), 4\,622 verdaderos positivos (TP), 524 falsos negativos (FN) y 850 falsos positivos
+(FP).
 
-\subsection*{Enfoques complementarios y validación}
-Sugerimos las siguientes acciones para robustecer resultados:
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.6\linewidth]{fig_027_cell87_out3.png}
+\caption{Matriz de confusión con clases balanceadas: 6\,004 TN, 4\,622 TP, 850 FP, 524
+FN. El recall de la clase grave es $4\,622 / (4\,622 + 524) \approx 0.90$: el modelo
+detecta el 90\,\% de los accidentes realmente graves.}
+\label{fig:matriz-balanceada}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Métricas de clasificación --- escenario balanceado}
+\label{tab:clasificacion-bal}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Clase & Precisión & Recall & F1-score & Soporte \\
+\midrule
+0 (no grave) & 0.92 & 0.88 & 0.90 & 6\,854 \\
+1 (grave)    & 0.84 & 0.90 & 0.87 & 5\,146 \\
+\midrule
+AUC-ROC & \multicolumn{4}{c}{0.926\,856} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Matriz de Confusión --- Escenario con Desbalance Extremo}
+
+La Figura~\ref{fig:matriz-desbalanceada} muestra el resultado del clasificador cuando el
+conjunto de test tiene desbalance extremo (clase grave = 1.8\,\% del total). Resultado:
+14\,721 TN, 6 FP, 273 FN, 0 TP. El modelo clasifica todo como «no grave».
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.6\linewidth]{fig_034_cell94_out12.png}
+\caption{Matriz de confusión con desbalance extremo (clase grave = 1.8\,\%). El modelo
+clasifica todo como «no grave» (0 TP). La accuracy en este escenario es 98.1\,\% pero el
+recall de la clase grave es 0\,\%. Esta es la \textit{paradoja del desbalance}.}
+\label{fig:matriz-desbalanceada}
+\end{figure}
+
+\textbf{La paradoja del desbalance:} Con 14\,721 negativos y 273 positivos, un clasificador
+que prediga siempre 0 tiene accuracy = $14\,727 / 15\,000 = 98.1\,\%$. Esto ilustra por
+qué la accuracy no es una métrica adecuada cuando las clases están desbalanceadas.
+
+\subsection{Interpretación Crítica}
+
+\textbf{¿Qué tan confiable es el modelo?} Muy confiable para discriminación global (AUC =
+0.93) pero su confiabilidad operativa depende del umbral y del balanceo de clases. En el
+escenario balanceado (Figura~\ref{fig:matriz-balanceada}), el recall de la clase grave es
+del 90\,\%, lo cual es útil. En el escenario desbalanceado, falla completamente.
+
+\textbf{¿Qué consecuencias tendría un falso negativo?} En el contexto de seguridad vial,
+un falso negativo significa clasificar como «no grave» un accidente que sí lo es. Las
+consecuencias pueden incluir: no despachar recursos de emergencia suficientes, no activar
+protocolos de intervención territorial, no alertar a los servicios de salud. En sistemas
+de triage o priorización de atención, el coste de un falso negativo es inaceptablemente
+alto.
+
+\textbf{¿Podría existir discriminación algorítmica?} Sí. Si el modelo aprende que ciertos
+territorios (localidades) o ciertos tipos de vehículo predicen la gravedad, y estos
+correlacionan con condiciones socioeconómicas, el modelo podría reproducir sesgos
+estructurales existentes. Por ejemplo, si las localidades de mayor pobreza tienen mayor
+proporción de usuarios en moto y el modelo les asigna mayor riesgo, esto podría usarse
+para concentrar recursos de control en esas zonas, perpetuando la estigmatización
+territorial en lugar de abordar las causas estructurales.
+
+\textbf{¿Qué se recomienda para mejorar el modelo?}
 \begin{itemize}
-  \item Validación externa con otra muestra o periodo temporal para evaluar generalización.
-  \item Análisis de subgrupos con modelos locales (por tipo de vía, actor, hora) para detectar heterogeneidades no captadas globalmente.
-  \item Estimación de impactos contrafactuales (si procede) para valorar efectos potenciales de intervenciones.
+  \item Ajuste de umbral óptimo según coste de falsos negativos vs.\ falsos positivos.
+  \item Técnicas de sobremuestreo (SMOTE) para la clase grave en el entrenamiento.
+  \item Ponderación de clases con \texttt{class\_weight=`balanced'}.
+  \item Explorar modelos no lineales (Random Forest, Gradient Boosting) que puedan
+        capturar interacciones entre factores.
 \end{itemize}
 
-\subsection*{Implicaciones prácticas y políticas}
-Desde la perspectiva de políticas públicas, las variables con mayor asociación (por ejemplo, presencia de motocicleta y embriaguez) permiten priorizar campañas de control y medidas de ingeniería. Sugerimos que la autoridad de tránsito utilice los KPI's y mapas derivados de este análisis para asignar recursos en zonas y franjas horarias de mayor riesgo.
+% ============================================================
+% 17. DISCUSIÓN CRÍTICA
+% ============================================================
+\section{Discusión Crítica}
 
-\subsection*{Limitaciones generales y cautelas}
-El análisis está obligado por la calidad del dato. Las conclusiones que aquí se exponen deben considerarse hipótesis robustas, sujetas a confirmación con datos de mayor calidad y en contexto operativo real. Además, la interpretación causal requiere diseños distintos (experimentos, registros longitudinales) y no puede inferirse directamente de este estudio.
+\subsection{Limitaciones del Dataset}
 
-\section{Resultados integrados}
-
-\section{Resultados integrados}
-Para sintetizar el trabajo completo, la Tabla~\ref{tab:resumen} reúne las métricas más relevantes.
-
-\begin{table}[h]
-\centering
-\caption{Resumen de métricas principales del análisis}
-\label{tab:resumen}
-\begin{tabular}{@{}ll@{}}
-\toprule
-Indicador & Valor \\
-\midrule
-Registros & 60\,000 \\
-Variables & 27 \\
-Filas duplicadas & 44\,017 \\
-Media de total\_condiciones & 1.886 \\
-Mediana de total\_condiciones & 2.0 \\
-Porcentaje de casos graves & 42.88\% \\
-$\chi^2$ principal & 14\,045.046 \\
-Cramér's $V$ principal & 0.484 \\
-ANOVA $F$ & 195.463 \\
-$R^2$ de regresión & 0.529 \\
-ROC AUC de clasificación & 0.926856 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Además de estos indicadores, el conjunto de resultados muestra que la severidad está estructurada por variables de contexto y exposición. Las asociaciones no son homogéneas: algunas son muy fuertes y otras muy débiles, lo cual aporta matiz al análisis. Esa diferencia de fuerza explica por qué el modelo predictivo mejora al combinar múltiples predictores, pero no alcanza una solución perfecta.
-
-\section{Discusión}
-El análisis completo permite extraer una lectura robusta del fenómeno. La primera idea es operativa: los datos requieren depuración cuidadosa, ya que la cantidad de duplicados cambia el peso de los casos y puede distorsionar cualquier conclusión. La segunda es estadística: existe señal real en las variables de exposición, lo cual se refleja tanto en el chi-cuadrado como en los tamaños de efecto y los contrastes de hipótesis. La tercera es predictiva: la información disponible es suficiente para construir modelos útiles, pero todavía no para garantizar un sistema de clasificación excelente sobre la clase grave.
-
-En términos metodológicos, el proyecto está bien resuelto porque ajusta el método a la evidencia. Cuando la normalidad falla, se evita insistir en técnicas paramétricas por inercia. Cuando la clasificación se ve afectada por desbalance, se interpreta la accuracy con cautela. Cuando una asociación presenta Cramér's $V$ alto, se la considera una relación sustantiva y no solo estadísticamente significativa.
-
-También conviene subrayar que el trabajo deja preparada una agenda de mejora: balanceo de clases, prueba de modelos no lineales, selección de variables, interacción entre condiciones y validación cruzada más sistemática. Es decir, la lógica del informe no termina en el ajuste actual, sino que abre una línea de optimización futura.
-
-\section{Conclusiones}
-El estudio confirma que la severidad de los siniestros viales presenta una estructura estadística clara y que esa estructura puede capturarse parcialmente con técnicas de análisis de datos estándar. El proceso completo, desde la comprensión del dataset hasta la evaluación del clasificador final, muestra que la limpieza, la exploración y el contraste inferencial no son fases separadas sino encadenadas.
-
-Los resultados más importantes son tres. Primero, la base de datos contiene mucha redundancia y debe tratarse con cuidado. Segundo, varias variables explicativas muestran asociaciones fuertes con la gravedad, especialmente las vinculadas a motocicleta y a condiciones de exposición. Tercero, la predicción es razonablemente buena en discriminación global, pero sigue necesitando mejoras para ser útil en entornos donde detectar la clase grave es prioritario.
-
-En conjunto, el trabajo cumple el objetivo académico de convertir un archivo CSV en un informe analítico completo, argumentado y defendible. También deja claro que el siguiente paso lógico no es ampliar el resumen, sino refinar el modelo y reforzar la evaluación con criterios más sensibles al riesgo real.
-
-\section{Preguntas de reflexión final}
 \begin{enumerate}
-  \item \textbf{¿Los datos representan la realidad completa?} No. Representan una versión parcial y filtrada por el proceso de captura, codificación y subregistro. El análisis debe asumir sesgos y ausencias.
-  \item \textbf{¿Qué información falta?} Faltan variables contextuales finas: estado de la vía, hora exacta, clima, flujo vehicular, infraestructura, conducta del conductor y calidad del reporte.
-  \item \textbf{¿Qué tan objetiva es la analítica?} La analítica no es totalmente objetiva; depende de decisiones de limpieza, codificación, selección de variables y elección de métricas.
-  \item \textbf{¿Puede un modelo matemático comprender fenómenos humanos complejos?} Puede aproximarlos y detectar patrones, pero no sustituye el juicio social ni la comprensión causal completa.
-  \item \textbf{¿Qué responsabilidad ética tiene un ingeniero de sistemas al construir modelos predictivos?} Debe minimizar sesgos, explicar límites, evitar sobreventa de resultados y proteger a grupos vulnerables.
-  \item \textbf{¿Qué riesgos existen cuando las decisiones públicas dependen exclusivamente de algoritmos?} Se corre el riesgo de automatizar inequidades, reducir transparencia y sobreconfiar en predicciones incompletas.
-  \item \textbf{¿Cómo evitar interpretaciones estadísticas engañosas?} Separando significancia de relevancia práctica, validando supuestos, reportando incertidumbre y revisando sesgos de muestreo.
-  \item \textbf{¿Qué diferencia existe entre automatizar decisiones y comprender fenómenos?} Automatizar ejecuta reglas; comprender exige explicar contexto, causa probable y límites del modelo.
+  \item \textbf{73.4\,\% de duplicados exactos:} Ninguna estimación de frecuencias
+        absolutas es válida sin reconocer que los conteos están inflados. Eliminarlos
+        tampoco es trivial por la ausencia de identificador único.
+  \item \textbf{Subregistro sistemático:} Variables como embriaguez y velocidad capturan
+        menos del 3\,\% de ocurrencias, cuando la evidencia epidemiológica global sugiere
+        tasas mucho mayores. Las conclusiones sobre estas variables reflejan el proceso de
+        captura, no la realidad del fenómeno.
+  \item \textbf{Ausencia de variables contextuales:} No hay información sobre condiciones
+        climáticas, estado del pavimento, flujo vehicular, hora exacta, experiencia del
+        conductor ni infraestructura del tramo. Estas variables tienen potencial explicativo
+        alto y su ausencia genera variables omitidas que sesgan los coeficientes estimados.
 \end{enumerate}
 
-\section{Figuras y tablas finales}
-Las siguientes figuras y tablas condensan la ejecución en Python y pueden insertarse como anexos gráficos definitivos del documento final.
+\subsection{Posibles Sesgos}
 
-\begin{table}[h]
-\centering
-\caption{Resumen final integrado de resultados}
-\label{tab:resumen-final}
-\begin{tabular}{@{}ll@{}}
-\toprule
-Elemento & Resultado \\
-\midrule
-Asociación principal & $\chi^2=14\,045.046$, $V=0.484$ \\
-ANOVA principal & $F=195.463$, $p=1.164\times10^{-165}$ \\
-Regresión lineal & $R^2=0.529$, MSE=$0.169$ \\
-Clasificación logística & ROC AUC=$0.926856$, accuracy=$0.981$ \\
-Clase positiva & Precision=$0.000$, Recall=$0.000$, F1=$0.000$ \\
-\bottomrule
-\end{tabular}
-\end{table}
+\begin{itemize}
+  \item \textbf{Sesgo de selección:} Solo se registran los accidentes reportados
+        formalmente. Los accidentes menores que no generan reporte policial están ausentes.
+  \item \textbf{Sesgo de medición:} La gravedad se determina al momento del reporte, no
+        al del desenlace final. Un accidente inicialmente clasificado como «Solo Daños»
+        puede derivar en heridos; esto no se actualiza en el registro.
+  \item \textbf{Sesgo de confirmación:} El analista que codifica el accidente puede
+        registrar más condiciones cuando el resultado es grave (atención selectiva), lo que
+        inflaría artificialmente las asociaciones.
+\end{itemize}
 
-\begin{figure}[h]
-\centering
-\includegraphics[width=0.95\linewidth]{fig_008_cell64_out8.png}
-\caption{Bloque final de visualizaciones del notebook.}
-\label{fig:bloque-final}
-\end{figure}
+\subsection{Diferencia entre Correlación y Causalidad}
 
-\section{Integración de figuras en el desarrollo}
-He integrado las figuras directamente en las fases del informe, como resultados empíricos acompañando el análisis. A continuación se muestran las figuras clave ya insertadas en su contexto y un breve comentario analítico por bloque. Las 56 imágenes exportadas desde el notebook se han distribuido según su rol analítico (EDA, bivariado, inferencia, modelado); si prefieres que mueva figuras específicas, indícalo y las reubico.
+El análisis demuestra que \texttt{Con\_Moto} está fuertemente asociado a la gravedad
+($V = 0.484$). Esto \textbf{no} permite concluir que las motos \textit{causan} accidentes
+graves. La correlación puede deberse a:
 
-% FASE 3: figuras y análisis inline
-En la FASE 3 (estadística descriptiva) se incluyen histogramas y boxplots que muestran la asimetría de \textit{total\_condiciones} y la diferencia entre grupos de severidad. Estas figuras sirven como evidencia visual para preferir pruebas no paramétricas.
-\begin{figure}[h]
-\centering
-\includegraphics[width=0.95\linewidth]{fig_001_cell48_out1.png}
-\caption{Histograma de \textit{total\_condiciones}: muestra cola derecha y concentración en 1--3 condiciones.}
-\label{fig:hist-total-condiciones-analisis}
-\end{figure}
+\begin{itemize}
+  \item Causalidad real: los accidentes con motos son inherentemente más peligrosos.
+  \item Confusión: las motos circulan en condiciones de mayor riesgo (velocidades más
+        altas, zonas con peor infraestructura).
+  \item Sesgo de registro: los accidentes con motos se registran con más detalle cuando
+        hay usuarios vulnerables involucrados.
+\end{itemize}
 
-\begin{figure}[h]
-\centering
-\includegraphics[width=0.95\linewidth]{fig_002_cell50_out1.png}
-\caption{Boxplot de \textit{total\_condiciones} por nivel de gravedad: diferencia de medianas entre grupos.}
-\label{fig:box-total-condiciones-analisis}
-\end{figure}
+Para establecer causalidad se requieren diseños cuasi-experimentales, series temporales o
+datos con variación exógena (por ejemplo, zonas con y sin restricción de motos antes y
+después de una intervención).
 
-Breve análisis: la distribución y la diferencia entre medianas (Figura~\ref{fig:box-total-condiciones-analisis}) justifican el uso de Mann--Whitney y pruebas de rango cuando Shapiro--Wilk rechaza normalidad.
+\subsection{Implicaciones Sociales y Éticas}
 
-% FASE 4: bivariado y tamaño de efecto
-En la FASE 4 se presentan medidas de asociación y tamaños de efecto; las figuras del bloque muestran Cramér's V y gráficas de barras por indicador.
-\begin{figure}[h]
-\centering
-\includegraphics[width=0.8\linewidth]{fig_018_cell72_out12.png}
-\caption{Indicadores de Cramér's V por variable \textit{Con\_...}: identifica las variables con mayor asociación a severidad.}
-\label{fig:cramers-v-analisis}
-\end{figure}
+\begin{itemize}
+  \item \textbf{Uso responsable:} Los modelos predictivos en seguridad vial pueden ayudar
+        a priorizar recursos, pero no deben reemplazar el juicio institucional ni usarse
+        para criminalizar conductores de motos o peatones de ciertas zonas.
+  \item \textbf{Transparencia:} Cualquier sistema de alerta basado en estos modelos debe
+        documentar sus limitaciones, tasas de error y el impacto diferencial sobre grupos
+        sociales.
+  \item \textbf{Actualización:} Los modelos entrenan sobre datos históricos. Si los
+        patrones de accidentalidad cambian (por intervenciones de infraestructura,
+        cambios en el parque automotor), los modelos deben reentrenarse.
+\end{itemize}
 
-Análisis: la Figura~\ref{fig:cramers-v-analisis} muestra que `Con_Moto` y variables de exposición tienen los mayores V, corroborando los valores numéricos reportados (p.ej. $V\approx0.48$).
+\subsection{Rol de la Ingeniería de Sistemas}
 
-% FASE 6--7: inferencia y ANOVA
-En las fases de contraste e ANOVA se insertan las figuras que ilustran diferencias por localidad y los resultados post-hoc.
-\begin{figure}[h]
-\centering
-\includegraphics[width=0.95\linewidth]{fig_004_cell61_out1.png}
-\caption{Comparación de severidad entre localidades (ANOVA): medias y dispersión por territorio.}
-\label{fig:anova-localidad-analisis}
-\end{figure}
+El ingeniero de sistemas en analítica de datos no es solo un programador que ejecuta
+algoritmos. Es un profesional que debe \textit{cuestionar los datos}, \textit{interpretar
+los resultados en su contexto} y \textit{comunicar honestamente las limitaciones}. La
+capacidad de construir un modelo con AUC = 0.93 es técnicamente valiosa; la capacidad de
+explicar qué significa ese número, cuándo el modelo falla y qué decisiones no deben basarse
+en él, es lo que distingue al ingeniero analítico del operador de software.
 
-Comentario: el alto valor de $F$ y el mapa de medias confirman diferencias territoriales sistemáticas; las comparaciones post-hoc en el notebook detallan qué pares muestran diferencias significativas.
+% ============================================================
+% 18. CONCLUSIONES
+% ============================================================
+\section{Conclusiones}
 
-% FASE 8--9: modelado y evaluación
-En la fase de modelado las figuras siguientes muestran el ajuste y la evaluación del clasificador (residuos, curva ROC, coeficientes).
-\begin{figure}[h]
-\centering
-\includegraphics[width=0.95\linewidth]{fig_005_cell64_out2.png}
-\caption{Resultados visuales de la regresión múltiple: coeficientes estandarizados y ajuste.}
-\label{fig:regresion-lineal-analisis}
-\end{figure}
+\begin{enumerate}
+  \item \textbf{La calidad del dato es el principal condicionante del análisis.} El 73.4\,\%
+        de duplicados y el subregistro en variables clave (embriaguez, velocidad) limitan la
+        validez de cualquier estimación de frecuencia absoluta. Toda conclusión debe estar
+        acompañada de esta advertencia metodológica.
 
-\begin{figure}[h]
-\centering
-\includegraphics[width=0.95\linewidth]{fig_006_cell64_out4.png}
-\caption{Curva ROC del clasificador logístico y evaluación por umbral.}
-\label{fig:roc-analisis}
-\end{figure}
+  \item \textbf{Motocicleta y peatón son los factores de mayor peso estadístico.}
+        \texttt{Con\_Moto} ($V = 0.484$) y \texttt{Con\_Peaton} ($V \approx 0.43$)
+        presentan las asociaciones más fuertes y estables con la gravedad del siniestro,
+        confirmadas por chi-cuadrado, Mann-Whitney, coeficientes del modelo logístico y
+        análisis descriptivo. Políticas de seguridad vial orientadas a proteger estos
+        usuarios tienen respaldo estadístico.
 
-Breve interpretación: la Figura~\ref{fig:roc-analisis} explica el contraste entre AUC alto y fallo operativo en detección de la clase positiva —esencial para decidir umbrales y estrategias de balanceo.
+  \item \textbf{El modelo logístico discrimina bien globalmente (AUC = 0.93) pero su
+        utilidad operativa depende del umbral.} En escenario balanceado alcanza recall
+        = 90\,\% para accidentes graves. En escenario desbalanceado, el modelo falla
+        completamente en detectar la clase de interés, recordando que la accuracy no es
+        la métrica adecuada cuando las clases están desbalanceadas.
 
-Si quieres, continúo insertando análisis cortos por cada figura restante para que todas las 56 imágenes estén acompañadas por un párrafo interpretativo en su fase correspondiente.
+  \item \textbf{La variación territorial es estadísticamente significativa} (ANOVA
+        $F = 195.5$, $p \approx 10^{-165}$), pero debe interpretarse con cautela: las
+        diferencias de severidad entre localidades pueden reflejar tanto diferencias reales
+        en la peligrosidad de las vías como diferencias en la composición del parque
+        vehicular y en las condiciones socioeconómicas.
+
+  \item \textbf{La regresión lineal explica el 40\,\% de la varianza.} El 60\,\% restante
+        corresponde a variables no disponibles en el dataset, lo que indica que un sistema
+        predictivo robusto requeriría enriquecer los datos con variables contextuales.
+\end{enumerate}
+
+% ============================================================
+% 19. RECOMENDACIONES
+% ============================================================
+\section{Recomendaciones}
+
+\begin{enumerate}
+  \item \textbf{Mejorar el sistema de captura de datos:} implementar identificadores
+        únicos de evento, registrar condiciones de embriaguez con prueba de alcoholemia
+        obligatoria, incluir velocidad estimada y estado del pavimento.
+  \item \textbf{Aplicar balanceo de clases} en el entrenamiento de modelos predictivos
+        (SMOTE, ponderación, umbral ajustado) para mejorar la detección de accidentes
+        graves.
+  \item \textbf{Explorar modelos no lineales} (Random Forest, Gradient Boosting) que
+        puedan capturar interacciones entre factores y reducir el sesgo de modelos
+        lineales sobre datos ordinales.
+  \item \textbf{Integrar datos geoespaciales:} un modelo que incorpore tipo de vía,
+        densidad vehicular y cobertura de semáforos por segmento vial tendría mayor
+        capacidad predictiva y mayor utilidad para intervenciones de infraestructura.
+  \item \textbf{Validar el modelo con datos de otro periodo temporal:} entrenar con un
+        año y predecir sobre otro para evaluar la estabilidad temporal de las asociaciones
+        encontradas.
+  \item \textbf{Diseñar un panel de KPI's en tiempo real:} los indicadores diseñados
+        (tasa de accidentes con moto, índice por localidad, proporción por día) son
+        adecuados para un dashboard de monitoreo que apoye la toma de decisiones operativas
+        de la autoridad de tránsito.
+\end{enumerate}
+
+% ============================================================
+% 20. REFERENCIAS
+% ============================================================
+\section*{Referencias}
+\addcontentsline{toc}{section}{Referencias}
 
 \begin{thebibliography}{9}
 
@@ -317,396 +1439,69 @@ Pedregosa, F., Varoquaux, G., Gramfort, A., et al. (2011).
 Scikit-learn: Machine learning in Python.
 \textit{Journal of Machine Learning Research}, 12, 2825--2830.
 
+\bibitem{fawcett2006}
+Fawcett, T. (2006).
+An introduction to ROC analysis.
+\textit{Pattern Recognition Letters}, 27(8), 861--874.
+
 \bibitem{dataset}
-Conjunto de datos de siniestros viales usado en el trabajo final de curso.
-Archivo local: \texttt{02\_04\_crash\_severity (1).csv}.
+Dataset de siniestros viales suministrado por el curso.
+Archivo: \texttt{02\_04\_crash\_severity.csv}.
 
 \end{thebibliography}
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_009_cell65_out2.png}
-\caption{Figura adicional: fig\_009\_cell65\_out2.png}
-\label{fig:app-009}
-\end{figure}
-\clearpage
 
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_010_cell65_out3.png}
-\caption{Figura adicional: fig\_010\_cell65\_out3.png}
-\label{fig:app-010}
-\end{figure}
-\clearpage
+% ============================================================
+% 21. ANEXOS DE CÓDIGO
+% ============================================================
+\appendix
+\section{Gráficos de Barras Obligatorios}
+\label{app:barras}
 
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_011_cell66_out3.png}
-\caption{Figura adicional: fig\_011\_cell66\_out3.png}
-\label{fig:app-011}
-\end{figure}
-\clearpage
+Los siguientes gráficos de barras resumen la distribución de conteos por las principales
+dimensiones del dataset, cumpliendo el requisito de visualizaciones obligatorias.
 
-% Apéndice: figuras adicionales (sugeridas para insertar en FASE 3--8)
-\section*{Apéndice: figuras adicionales}
-Las figuras siguientes son las recomendadas como inserciones principales en las secciones EDA, análisis bivariado y modelado. Pueden moverse a las subsecciones correspondientes según preferencia editorial.
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{fig_041_cell95_out6.png}
+\caption{Gráficos de barras de conteos por localidad (top 20), día de semana,
+\texttt{Con\_Moto}, \texttt{Con\_Embriaguez} y \texttt{Con\_Peaton}. Estos paneles
+confirman la concentración territorial en Kennedy y la predominancia de viernes como día
+de mayor accidentalidad.}
+\label{fig:barras-conteo}
+\end{figure}
 
-\begin{figure}[p]
-\centering
-\includegraphics[width=0.95\textwidth]{fig_012_cell66_out4.png}
-\caption{Perfil temporal por tipo de actor (fig\_012).}
-\label{fig:app-012}
-\end{figure}
-\clearpage
+\section{Resumen de Resultados Estadísticos}
+\label{app:resumen}
 
-\begin{figure}[p]
+\begin{table}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{fig_013_cell72_out2.png}
-\caption{Patrón de severidad en siniestros con motocicletas (fig\_013).}
-\label{fig:app-013}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=0.95\textwidth]{fig_014_cell72_out4.png}
-\caption{Análisis por franjas horarias (fig\_014).}
-\label{fig:app-014}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=0.95\textwidth]{fig_015_cell72_out6.png}
-\caption{Perfil de siniestros con bicicletas (fig\_015).}
-\label{fig:app-015}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=0.95\textwidth]{fig_016_cell72_out8.png}
-\caption{Severidad por tipo de vía (fig\_016).}
-\label{fig:app-016}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=0.95\textwidth]{fig_017_cell72_out10.png}
-\caption{Siniestros con peatones: distribución por gravedad (fig\_017).}
-\label{fig:app-017}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=0.95\textwidth]{fig_018_cell80_out2.png}
-\caption{Indicadores de Cramér's V (fig\_018).}
-\label{fig:app-018}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=0.95\textwidth]{fig_019_cell86_out4.png}
-\caption{Distribución de embriaguez y severidad (fig\_019).}
-\label{fig:app-019}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=0.95\textwidth]{fig_020_cell86_out6.png}
-\caption{Comparación de residuales del modelo de regresión (fig\_020).}
-\label{fig:app-020}
-\end{figure}
-\clearpage
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_021_cell79_out2.png}
-\caption{Figura adicional: fig\_021\_cell79\_out2.png}
-\label{fig:app-021}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_022_cell80_out3.png}
-\caption{Figura adicional: fig\_022\_cell80\_out3.png}
-\label{fig:app-022}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_023_cell83_out2.png}
-\caption{Figura adicional: fig\_023\_cell83\_out2.png}
-\label{fig:app-023}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_024_cell84_out4.png}
-\caption{Figura adicional: fig\_024\_cell84\_out4.png}
-\label{fig:app-024}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_025_cell86_out1.png}
-\caption{Figura adicional: fig\_025\_cell86\_out1.png}
-\label{fig:app-025}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_026_cell86_out3.png}
-\caption{Figura adicional: fig\_026\_cell86\_out3.png}
-\label{fig:app-026}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_027_cell87_out3.png}
-\caption{Figura adicional: fig\_027\_cell87\_out3.png}
-\label{fig:app-027}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_028_cell87_out5.png}
-\caption{Figura adicional: fig\_028\_cell87\_out5.png}
-\label{fig:app-028}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_029_cell87_out6.png}
-\caption{Figura adicional: fig\_029\_cell87\_out6.png}
-\label{fig:app-029}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_030_cell88_out11.png}
-\caption{Figura adicional: fig\_030\_cell88\_out11.png}
-\label{fig:app-030}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_031_cell90_out3.png}
-\caption{Figura adicional: fig\_031\_cell90\_out3.png}
-\label{fig:app-031}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_032_cell91_out3.png}
-\caption{Figura adicional: fig\_032\_cell91\_out3.png}
-\label{fig:app-032}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_033_cell92_out36.png}
-\caption{Figura adicional: fig\_033\_cell92\_out36.png}
-\label{fig:app-033}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_034_cell94_out12.png}
-\caption{Figura adicional: fig\_034\_cell94\_out12.png}
-\label{fig:app-034}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_035_cell94_out19.png}
-\caption{Figura adicional: fig\_035\_cell94\_out19.png}
-\label{fig:app-035}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_036_cell95_out1.png}
-\caption{Figura adicional: fig\_036\_cell95\_out1.png}
-\label{fig:app-036}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_037_cell95_out2.png}
-\caption{Figura adicional: fig\_037\_cell95\_out2.png}
-\label{fig:app-037}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_038_cell95_out3.png}
-\caption{Figura adicional: fig\_038\_cell95\_out3.png}
-\label{fig:app-038}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_039_cell95_out4.png}
-\caption{Figura adicional: fig\_039\_cell95\_out4.png}
-\label{fig:app-039}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_040_cell95_out5.png}
-\caption{Figura adicional: fig\_040\_cell95\_out5.png}
-\label{fig:app-040}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_041_cell95_out6.png}
-\caption{Figura adicional: fig\_041\_cell95\_out6.png}
-\label{fig:app-041}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_042_cell95_out7.png}
-\caption{Figura adicional: fig\_042\_cell95\_out7.png}
-\label{fig:app-042}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_043_cell95_out8.png}
-\caption{Figura adicional: fig\_043\_cell95\_out8.png}
-\label{fig:app-043}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_044_cell95_out9.png}
-\caption{Figura adicional: fig\_044\_cell95\_out9.png}
-\label{fig:app-044}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_045_cell95_out10.png}
-\caption{Figura adicional: fig\_045\_cell95\_out10.png}
-\label{fig:app-045}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_046_cell95_out11.png}
-\caption{Figura adicional: fig\_046\_cell95\_out11.png}
-\label{fig:app-046}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_047_cell95_out12.png}
-\caption{Figura adicional: fig\_047\_cell95\_out12.png}
-\label{fig:app-047}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_048_cell95_out13.png}
-\caption{Figura adicional: fig\_048\_cell95\_out13.png}
-\label{fig:app-048}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_049_cell95_out14.png}
-\caption{Figura adicional: fig\_049\_cell95\_out14.png}
-\label{fig:app-049}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_050_cell95_out15.png}
-\caption{Figura adicional: fig\_050\_cell95\_out15.png}
-\label{fig:app-050}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_051_cell95_out16.png}
-\caption{Figura adicional: fig\_051\_cell95\_out16.png}
-\label{fig:app-051}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_052_cell95_out17.png}
-\caption{Figura adicional: fig\_052\_cell95\_out17.png}
-\label{fig:app-052}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_053_cell95_out18.png}
-\caption{Figura adicional: fig\_053\_cell95\_out18.png}
-\label{fig:app-053}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_054_cell95_out19.png}
-\caption{Figura adicional: fig\_054\_cell95\_out19.png}
-\label{fig:app-054}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_055_cell95_out20.png}
-\caption{Figura adicional: fig\_055\_cell95\_out20.png}
-\label{fig:app-055}
-\end{figure}
-\clearpage
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\textwidth]{fig_056_cell95_out21.png}
-\caption{Figura adicional: fig\_056\_cell95\_out21.png}
-\label{fig:app-056}
-\end{figure}
-\clearpage
+\caption{Resumen global de todas las métricas del análisis}
+\label{tab:resumen-global}
+\begin{tabular}{@{}p{6cm}r@{}}
+\toprule
+Indicador & Valor \\
+\midrule
+Total registros & 60\,000 \\
+Total variables & 27 \\
+Duplicados exactos & 44\,017 (73.4\,\%) \\
+Media \texttt{total\_condiciones} & 1.886 \\
+Mediana \texttt{total\_condiciones} & 2.0 \\
+\% accidentes graves (\texttt{es\_grave}) & 42.88\,\% \\
+$\chi^2$ \texttt{Con\_Moto} & 14\,045.046 \\
+Cramér's $V$ \texttt{Con\_Moto} & 0.484 \\
+$\chi^2$ \texttt{Con\_Peaton} & $\approx$10\,680 \\
+Cramér's $V$ \texttt{Con\_Peaton} & $\approx$0.43 \\
+ANOVA localidades $F$ & 195.463 \\
+$p$-valor ANOVA & $1.164 \times 10^{-165}$ \\
+Mann-Whitney $r$ (Con\_Moto) & $-0.095$ \\
+$R^2$ regresión lineal (test) & 0.400 \\
+MSE regresión lineal (test) & 0.169 \\
+CV $R^2$ media (5-fold) & 0.398 \\
+AUC-ROC clasificador logístico & 0.926\,856 \\
+Recall clase grave (balanceado) & $\approx$ 0.90 \\
+F1-score clase grave (balanceado) & 0.87 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \end{document}
